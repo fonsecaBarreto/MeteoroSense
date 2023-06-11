@@ -2,29 +2,35 @@
 // Titulo: Integração HTTP
 // Data: 20/05/2023
 //.........................................................................................................................
-
+enum pins
+{
+DHTPIN = 21  
+ANEMOMETER_PIN = 18,
+PLV_PIN = 5,
+PIN_VANE= 12 
+}
 
 #include <DHT.h>
 #include "integration.h"
-#define DHTPIN 21      // Define o pino de conexão do sensor ao Arduino
+
 #define DHTTYPE DHT11  // Define o tipo de sensor (DHT11 ou DHT22)
 // Temperatura, umidade
 DHT dht(DHTPIN, DHTTYPE);
 #define INTERVAL 500  // Intervalo de Tempo entre medições (ms)
 #define DEBOUNCE_DELAY 25
 // Anemometro (Velocidade do vento)
-#define ANEMOMETER_PIN 18
+
 #define ANEMOMETER_CIRC (2 * 3.14159265 * 0.145)  // Circunferência anemometro (m)
 unsigned long lastVVTImpulseTime = 0;
 unsigned int anemometerCounter = 0;
 // Pluviometro
-#define PLV_PIN 5
+
 #define VOLUME_PLUVIOMETRO 0.33  // Volume do pluviometro em ml
 unsigned long lastPVLImpulseTime = 0;
 unsigned rainCounter = 0;
 // Biruta (Direção do vento)
 #define NUMDIRS 8
-#define PIN_VANE 12                  // Pino biruta
+                 // Pino biruta
 unsigned long adc[NUMDIRS] = {26, 45, 77, 118, 161, 196, 220, 256};
 char *strVals[NUMDIRS] = {"W", "NW", "N", "SW", "NE", "S", "SE", "E"};
 unsigned int vane_dir = 0;
