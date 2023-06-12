@@ -1,0 +1,22 @@
+version: '3'
+
+networks:
+  sit-development:
+    name: 'sit-development'
+
+services:
+  broker:
+    container_name: broker-server
+    image: 'eclipse-mosquitto:2'
+    restart: always
+    volumes:
+      - ./mqtt/mosquitto:/mosquitto
+    ports:
+      - '38298:38298'
+      - '9001:9001'
+    networks:
+      - sit-development
+
+volumes:
+  data:
+    name: sit-dev-db
