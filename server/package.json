@@ -2,16 +2,17 @@
   "name": "sit-server",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "main/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon index.js",
-    "start": "node index.js"
+    "dev": "nodemon main/index.js",
+    "start": "node main/index.js"
   },
   "author": "fonsecaBarreto",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "mqtt": "^4.3.7"
   },
   "devDependencies": {
     "i": "^0.3.7",
