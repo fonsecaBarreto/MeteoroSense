@@ -1,10 +1,9 @@
 // Autor: Lucas Fonseca e Gabriel Fonseca
-// Titulo: Integração HTTP
+// Titulo: Sit arduino
 //.........................................................................................................................
 
 #include <DHT.h>
 #include "integration.h"
-#include "config.h"
 
 // pinos
 #define DHTPIN 21
@@ -13,7 +12,7 @@
 #define PIN_VANE 12
 #define DHTTYPE DHT11  // Define o tipo de sensor (DHT11 ou DHT22)
 // constants
-#define INTERVAL 500  // Intervalo de Tempo entre medições (ms)
+#define INTERVAL 5000  // Intervalo de Tempo entre medições (ms)
 #define DEBOUNCE_DELAY 25
 
 // Anemometro (Velocidade do vento)
@@ -52,8 +51,8 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   Serial.println("\n\n Sistema Integrado de meteorologia \n");
-  config();
   connectWifi();
+  connectMqtt();
   // pinos
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
   pinMode(PLV_PIN, INPUT_PULLUP);
@@ -69,7 +68,7 @@ void setup() {
 
 
 void loop() {
-  Serial.println("\nIniciando medições");
+  Serial.println("\n");
 
   anemometerCounter = 0;
   rainCounter = 0;
@@ -79,40 +78,37 @@ void loop() {
 
   // calc
   Data.wind_dir = getWindDir();
-  return;
   Data.wind_speed = (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0f);  // em segundos
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
   DHTRead();
 
   // presentation
-  Serial.print("Velocidade do vento: ");
+  Serial.print("....................\n");
+  Serial.print("Velocidade do vento:  ");
   Serial.println(Data.wind_speed);
-  Serial.print("Chuva acumulada: ");
+  Serial.print("Chuva acumulada....:  ");
   Serial.println(Data.rain_acc);
-  Serial.print("Umidade: ");
-  Serial.print(Data.humidity);
-  Serial.print("%\t");
-  Serial.print("Temperatura: ");
+  Serial.print("Umidade............:  ");
+  Serial.println(Data.humidity);
+  Serial.print("Temperatura........:  ");
   Serial.print(Data.temperature);
   Serial.println("°C");
-
-  Serial.println("Direção do vento:");
-  Serial.print(Data.wind_dir);
-  Serial.println("\n");
+  Serial.print("Direção do vento...:  ");
+  Serial.println(Data.wind_dir);
 
   const char* csv_header ="timestamp,wind_speed,rain_cc,humidity,temperature\n%d,%.2f,%.2f,%.2f,%.2f";
   char csv_output[255];
   sprintf(csv_output, csv_header, startTime + INTERVAL, Data.wind_speed, Data.rain_acc, Data.humidity,Data.temperature);
-  sendMeasurement(csv_output);
-  blueToothConnection();
+
+  // publish
+  Serial.print("Enviando...........:  ");
+  sendMeasurementToMqtt(csv_output);
+  Serial.println("ok");
 }
 
 int getWindDir() {
   long long val, x, reading;
   val = analogRead(PIN_VANE);
-  Serial.println("test vane:");
-  Serial.println(val);
-
   val >>= 2;                        // Shift to 255 range
   Serial.println(val);
   return 0;
