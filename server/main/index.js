@@ -1,7 +1,10 @@
-const express = require('express')
-const { csvStringToJson } = require("./parsers");
+const express = require('express');
+const { connectToMqtt } = require('../infra/mqtt-client');
+const { csvStringToJson } = require("../helpers/parsers");
 const app = express()
 const port = 3000
+
+connectToMqtt();
 
 app.use(express.text())
 

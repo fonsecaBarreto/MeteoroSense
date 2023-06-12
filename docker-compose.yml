@@ -5,6 +5,24 @@ networks:
     name: 'sit-development'
 
 services:
+
+  server:
+    container_name: node-app
+    restart: always
+    command: sh -c "npm run dev"
+    build:
+      context: ./server
+      target: development
+    volumes:
+      - ./server:/usr/src/app
+      - /usr/src/app/node_modules
+    env_file:
+      - ./server/config/.env
+    ports:
+      - '3000:9000'
+    networks:
+      - sit-development
+
   broker:
     container_name: broker-server
     image: 'eclipse-mosquitto:2'
