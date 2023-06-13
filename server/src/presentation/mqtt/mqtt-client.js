@@ -4,7 +4,6 @@ import { storeMeasurement } from "../../controllers/storeMeasurement.js";
 
 const clientId = `mqtt_${Math.random().toString(16).slice(3)}`;
 const topic = "measurements";
-
 export function connectToMqtt(connectUrl) {
   const client = mqtt.connect(connectUrl, {
     clientId,
@@ -20,13 +19,14 @@ export function connectToMqtt(connectUrl) {
     });
 
     client.on("message", (topic, payload) => {
-      console.log("Received:", topic);
-      console.log(payload.toString());
-      return;
-      const json = csvStringToJson(payload.toString());
-      console.log(json);
-      storeMeasurement(JSON.parse(json));
-      console.log(json);
+      try {
+        console.log(topic, new Date().toLocaleDateString()," : " , payload.toString());
+        const dto = JSON.parse(payload.toString());
+        dto.timestamp = new Date();
+        storeMeasurement(dto);
+      } catch (err) {
+        console.log("Falha ao receber medição");
+      }
     });
   });
 }
