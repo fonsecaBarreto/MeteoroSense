@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "main/index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon main/index.js",
@@ -12,7 +13,8 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.18.2",
-    "mqtt": "^4.3.7"
+    "mqtt": "^4.3.7",
+    "pg": "^8.11.0"
   },
   "devDependencies": {
     "i": "^0.3.7",

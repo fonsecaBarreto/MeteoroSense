@@ -22,6 +22,9 @@ services:
       - '3000:9000'
     networks:
       - sit-development
+    depends_on:
+      db:
+        condition: service_healthy
 
   broker:
     container_name: broker-server
@@ -34,6 +37,26 @@ services:
       - '9001:9001'
     networks:
       - sit-development
+
+  db:
+    container_name: db
+    image: 'postgres:13'
+    environment:
+      - POSTGRES_DB=sit-database
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=1234567
+    volumes:
+      - 'data:/var/lib/postgresql/data'
+    ports:
+      - 5438:5432
+    networks:
+      - sit-development
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 1s
+      timeout: 5s
+      retries: 5
+
 
 volumes:
   data:
