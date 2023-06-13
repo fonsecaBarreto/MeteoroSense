@@ -35,7 +35,7 @@ byte dirOffset = 0;
 // Temperatura, umidade
 DHT dht(DHTPIN, DHTTYPE);
 
-// data
+// dto
 struct
 {
   float wind_speed = 0;
@@ -46,6 +46,20 @@ struct
   int wind_dir = -1;
 } Data;
 
+const char* DataToJson(long startTime){
+  const char* csv_header ="{ timestamp: %d, wind_speed: %.2f, rain_cc: %.2f, humidity: %.2f, temperature: %.2f }";
+  char json_output[160];
+  sprintf(json_output, csv_header, startTime + INTERVAL, Data.wind_speed, Data.rain_acc, Data.humidity,Data.temperature);
+  return json_output;
+}
+
+const char* DataToCsv(long startTime){
+  const char* csv_header ="timestamp,wind_speed,rain_cc,humidity,temperature\n%d,%.2f,%.2f,%.2f,%.2f";
+  char csv_output[160];
+  sprintf(csv_output, csv_header, startTime + INTERVAL, Data.wind_speed, Data.rain_acc, Data.humidity,Data.temperature);
+  return csv_output;
+}
+//
 
 void setup() {
   Serial.begin(115200);
@@ -96,10 +110,7 @@ void loop() {
   Serial.print("Direção do vento...:  ");
   Serial.println(Data.wind_dir);
 
-  const char* csv_header ="timestamp,wind_speed,rain_cc,humidity,temperature\n%d,%.2f,%.2f,%.2f,%.2f";
-  char csv_output[255];
-  sprintf(csv_output, csv_header, startTime + INTERVAL, Data.wind_speed, Data.rain_acc, Data.humidity,Data.temperature);
-
+  const char* csv_output = DataToJson(startTime);
   // publish
   Serial.print("Enviando...........:  ");
   sendMeasurementToMqtt(csv_output);

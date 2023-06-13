@@ -20,9 +20,11 @@ export function connectToMqtt(connectUrl) {
     });
 
     client.on("message", (topic, payload) => {
-      console.log("Received Message:", topic);
-      console.log(new Date().toLocaleString(), " - data received:\n");
+      console.log("Received:", topic);
+      console.log(payload.toString());
+      return;
       const json = csvStringToJson(payload.toString());
+      console.log(json);
       storeMeasurement(JSON.parse(json));
       console.log(json);
     });
