@@ -1,5 +1,5 @@
 
-function csvStringToJson(csvString) {
+export function csvStringToJson(csvString) {
   const lines = csvString.split('\n');
   const headers = lines[0].split(',');
 
@@ -18,5 +18,3 @@ function csvStringToJson(csvString) {
 
   return JSON.stringify(result, null, 4);
 }
-
-module.exports = { csvStringToJson };

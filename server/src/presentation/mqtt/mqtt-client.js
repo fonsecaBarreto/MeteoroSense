@@ -1,12 +1,10 @@
-const mqtt = require("mqtt");
-const { mqttUrl: connectUrl } = require("../config/constants");
-const { csvStringToJson } = require("../helpers/parsers");
+import mqtt from "mqtt";
+import { csvStringToJson } from "../../helpers/parsers.js";
 
 const clientId = `mqtt_${Math.random().toString(16).slice(3)}`;
 const topic = "measurements";
 
-function connectToMqtt() {
-  console.log("Connecting to mqtt", connectUrl);
+export function connectToMqtt(connectUrl) {
   const client = mqtt.connect(connectUrl, {
     clientId,
     clean: true,
@@ -15,7 +13,7 @@ function connectToMqtt() {
   });
 
   client.on("connect", () => {
-    console.log("Connected");
+    console.log("   Connected");
 
     client.subscribe([topic], () => {
       console.log(`Subscribe to topic '${topic}'`);
@@ -29,5 +27,3 @@ function connectToMqtt() {
     });
   });
 }
-
-module.exports = { connectToMqtt };
