@@ -1,5 +1,6 @@
 import mqtt from "mqtt";
 import { csvStringToJson } from "../../helpers/parsers.js";
+import { storeMeasurement } from "../../controllers/storeMeasurement.js";
 
 const clientId = `mqtt_${Math.random().toString(16).slice(3)}`;
 const topic = "measurements";
@@ -13,8 +14,7 @@ export function connectToMqtt(connectUrl) {
   });
 
   client.on("connect", () => {
-    console.log("   Connected");
-
+    console.log("Mqtt Connected");
     client.subscribe([topic], () => {
       console.log(`Subscribe to topic '${topic}'`);
     });
@@ -23,6 +23,7 @@ export function connectToMqtt(connectUrl) {
       console.log("Received Message:", topic);
       console.log(new Date().toLocaleString(), " - data received:\n");
       const json = csvStringToJson(payload.toString());
+      storeMeasurement(JSON.parse(json));
       console.log(json);
     });
   });
