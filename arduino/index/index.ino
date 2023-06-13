@@ -9,7 +9,7 @@
 #define DHTPIN 21
 #define ANEMOMETER_PIN 18
 #define PLV_PIN 5
-#define PIN_VANE 12
+#define VANE_PIN 36
 #define DHTTYPE DHT11  // Define o tipo de sensor (DHT11 ou DHT22)
 // constants
 #define INTERVAL 5000  // Intervalo de Tempo entre medições (ms)
@@ -26,9 +26,9 @@ unsigned long lastPVLImpulseTime = 0;
 unsigned rainCounter = 0;
 
 // Biruta (Direção do vento)
-#define NUMDIRS 8
-unsigned long adc[NUMDIRS] = {26, 45, 77, 118, 161, 196, 220, 256};
-char *strVals[NUMDIRS] = {"W", "NW", "N", "SW", "NE", "S", "SE", "E"};
+#define NUMDIRS 16
+int adc[NUMDIRS] = {144,   50,   475,  260,  860,  700,  2190,  2070, 3750, 3020, 3350, 2489, 2832,  1315, 1530, 100};
+char* strVals[NUMDIRS] = {"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
 unsigned int vane_dir = 0;
 byte dirOffset = 0;
 
@@ -46,18 +46,17 @@ struct
   int wind_dir = -1;
 } Data;
 
-const char* DataToJson(long startTime){
-  const char* csv_header ="{ timestamp: %d, wind_speed: %.2f, rain_cc: %.2f, humidity: %.2f, temperature: %.2f }";
-  char json_output[160];
+char json_output[160];
+char csv_output[160];
+
+void DataToJson(long startTime){
+  const char* csv_header ="{ \"timestamp\": %d, \"wind_speed\": %.2f, \"rain_cc\": %.2f, \"humidity\": %.2f, \"temperature\": %.2f }";
   sprintf(json_output, csv_header, startTime + INTERVAL, Data.wind_speed, Data.rain_acc, Data.humidity,Data.temperature);
-  return json_output;
 }
 
-const char* DataToCsv(long startTime){
+void DataToCsv(long startTime){
   const char* csv_header ="timestamp,wind_speed,rain_cc,humidity,temperature\n%d,%.2f,%.2f,%.2f,%.2f";
-  char csv_output[160];
   sprintf(csv_output, csv_header, startTime + INTERVAL, Data.wind_speed, Data.rain_acc, Data.humidity,Data.temperature);
-  return csv_output;
 }
 //
 
@@ -110,26 +109,27 @@ void loop() {
   Serial.print("Direção do vento...:  ");
   Serial.println(Data.wind_dir);
 
-  const char* csv_output = DataToJson(startTime);
-  // publish
+  DataToJson(startTime);
+  Serial.println(json_output);
   Serial.print("Enviando...........:  ");
-  sendMeasurementToMqtt(csv_output);
+  sendMeasurementToMqtt(json_output);
   Serial.println("ok");
 }
 
 int getWindDir() {
   long long val, x, reading;
-  val = analogRead(PIN_VANE);
-  val >>= 2;                        // Shift to 255 range
-  Serial.println(val);
-  return 0;
-  reading = val;
-  for (x = 0; x < NUMDIRS; x++) {
-    if (adc[x] >= reading)
-      break;
-  }
+  val = analogRead(VANE_PIN);
+  int closestIndex = 0;
+  int closestDifference = std::abs(val - adc[0]);
 
-  return (x + dirOffset) % NUMDIRS;   // Adjust for orientation
+  for (int i = 1; i < 16; i++) {
+        int difference = std::abs(val - adc[i]);
+        if (difference < closestDifference) {
+            closestDifference = difference;
+            closestIndex = i;
+        }
+  }
+  return closestIndex;
 }
 
 void anemometerChange() {
