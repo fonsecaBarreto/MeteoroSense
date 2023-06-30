@@ -11,7 +11,7 @@ async function main(){
   console.log(" - Connecting to Database...");
   await connectDatabase();
   console.log(" - Connecting to mqtt...");
-  connectToMqtt(constants.mqttUrl);
+  connectToMqtt();
   console.log(" - Stargin http server...");
   const port = 3000;
   startHttpServer(port);

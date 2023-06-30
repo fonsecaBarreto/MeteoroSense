@@ -1,12 +1,15 @@
 import mqtt from "mqtt";
-import { csvStringToJson } from "../../helpers/parsers.js";
 import { storeMeasurement } from "../../controllers/storeMeasurement.js";
 
-const clientId = `mqtt_${Math.random().toString(16).slice(3)}`;
+const protocol = 'mqtt'
+const host = 'telemetria.macae.ufrj.br:1883'
+const port = '1883'
+const clientId = `mqtt_${Math.random().toString(16).slice(3)}`
+const connectUrl = `${protocol}://${host}:${port}`
 const topic = "/prefeituras/macae/estacoes/est001";
-export function connectToMqtt(connectUrl) {
 
-  console.log(connectUrl)
+export function connectToMqtt() {
+
   const client = mqtt.connect(connectUrl, {
     clientId,
     clean: true,
@@ -18,6 +21,7 @@ export function connectToMqtt(connectUrl) {
 
   client.on("connect", () => {
     console.log("Mqtt Connected");
+
     client.subscribe([topic], () => {
       console.log(`Subscribe to topic '${topic}'`);
     });

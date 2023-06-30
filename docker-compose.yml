@@ -39,7 +39,7 @@ services:
       - sit-development
 
   db:
-    container_name: db
+    container_name: sit-db
     image: 'postgres:13'
     environment:
       - POSTGRES_DB=sit-database

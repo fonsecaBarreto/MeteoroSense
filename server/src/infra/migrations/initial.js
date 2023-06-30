@@ -5,7 +5,8 @@ export const createTableQuery = `
     temperature FLOAT,
     humidity FLOAT,
     rain_cc FLOAT,
-    wind_speed FLOAT
+    wind_speed FLOAT,
+    wind_dir INTEGER
   );
 `;
 
