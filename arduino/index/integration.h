@@ -13,9 +13,9 @@ const char* password = "2014072276";
 // rest api
 const String API_URL = "http://192.168.0.173:3000/csv";
 // mqtt api
-const char broker[] = "192.168.0.173";
-int port = 38298;
-const char topic[] = "measurements";
+const char broker[] = "telemetria.macae.ufrj.br";
+int port = 1883;
+const char topic[] = "/prefeituras/macae/estacoes/est001";
 
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
@@ -41,6 +41,7 @@ int connectMqtt()
   Serial.print("Attempting to connect to the MQTT broker: ");
   Serial.println(broker);
 
+  mqttClient.setUsernamePassword( "telemetria", "kancvx8thz9FCN5jyq" );
   if (!mqttClient.connect(broker, port))
   {
     Serial.print("MQTT connection failed! Error code = ");

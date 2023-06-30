@@ -3,13 +3,17 @@ import { csvStringToJson } from "../../helpers/parsers.js";
 import { storeMeasurement } from "../../controllers/storeMeasurement.js";
 
 const clientId = `mqtt_${Math.random().toString(16).slice(3)}`;
-const topic = "measurements";
+const topic = "/prefeituras/macae/estacoes/est001";
 export function connectToMqtt(connectUrl) {
+
+  console.log(connectUrl)
   const client = mqtt.connect(connectUrl, {
     clientId,
     clean: true,
     connectTimeout: 4000,
     reconnectPeriod: 1000,
+    username: 'telemetria',
+    password: 'kancvx8thz9FCN5jyq'
   });
 
   client.on("connect", () => {
