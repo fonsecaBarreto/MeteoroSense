@@ -3,14 +3,17 @@
 //.........................................................................................................................
 
 #include <DHT.h>
+#include <Wire.h>
+#include <Adafruit_BMP085.h>
+
 #include "integration.h"
 
 // pinos
-#define DHTPIN 21
+#define DHTPIN 17
 #define ANEMOMETER_PIN 18
 #define PLV_PIN 5
 #define VANE_PIN 36
-#define DHTTYPE DHT11  // Define o tipo de sensor (DHT11 ou DHT22)
+#define DHTTYPE DHT22  // Define o tipo de sensor (DHT11 ou DHT22)
 // constants
 #define STATION_ID "001"
 #define STATION_P "est001"
@@ -23,7 +26,7 @@ unsigned long lastVVTImpulseTime = 0;
 unsigned int anemometerCounter = 0;
 
 // Pluviometro
-#define VOLUME_PLUVIOMETRO 0.33  // Volume do pluviometro em ml
+#define VOLUME_PLUVIOMETRO 2.5  // Volume do pluviometro em ml
 unsigned long lastPVLImpulseTime = 0;
 unsigned rainCounter = 0;
 
@@ -37,6 +40,9 @@ unsigned int vane_dir = 0;
 byte dirOffset = 0;
 // Temperatura, umidade
 DHT dht(DHTPIN, DHTTYPE);
+Adafruit_BMP085 bmp;
+
+bool falha = false;
 
 // dto
 struct
@@ -47,19 +53,14 @@ struct
   float temperature = 0;
   float pressure = 0;
   int wind_dir = -1;
+  unsigned long SmallestTime=~0;
 } Data;
 
-char json_output[160];
-char csv_output[160];
+char json_output[240]{0};
 
 void DataToJson(long timestamp){
   const char* csv_header = "{\"timestamp\": %i, \"temperatura\": %.2f, \"umidade_ar\": %.2f, \"velocidade_vento\": %.2f, \"dir_vento\": %d, \"volume_chuva\": %.2f, \"uid\": \"%s\", \"identidade\": \"%s\"}";
   sprintf(json_output, csv_header,timestamp,Data.temperature,Data.humidity, Data.wind_speed,Data.wind_dir, Data.rain_acc,STATION_ID,STATION_P );
-}
-
-void DataToCsv(long startTime){
-  const char* csv_header ="timestamp,wind_speed,rain_cc,humidity,temperature\n%d,%.2f,%.2f,%.2f,%.2f";
-  sprintf(csv_output, csv_header, startTime + INTERVAL, Data.wind_speed, Data.rain_acc, Data.humidity,Data.temperature);
 }
 
 void setup() {
@@ -69,28 +70,35 @@ void setup() {
   connectWifi();
   connectNtp();
   connectMqtt();
-  // pinos
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
-  pinMode(PLV_PIN, INPUT_PULLUP);
-  // initial setup
+  pinMode(PLV_PIN, INPUT_PULLDOWN);
+  attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
+  dht.begin();
+
+  if (!bmp.begin()) {
+    Serial.println("Could not find a valid BMP180 sensor, check wiring!");
+    while (1);
+  }
+
+
+
   int now = millis();
   lastVVTImpulseTime = now;
   lastPVLImpulseTime = now;
-  attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
-  attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, FALLING);
-  dht.begin();
 }
 
 void loop() {
 
   timeClient.update();
   int timestamp = timeClient.getEpochTime();
-  Serial.println("Iniciando medição em:");
-  Serial.print(timestamp);
+
+  Serial.print("Iniciando medição em: ");
+  Serial.println(timestamp);
 
   anemometerCounter = 0;
   rainCounter = 0;
-
+  Data.SmallestTime=~0;
   long startTime = millis();
   while (millis() < startTime + INTERVAL) {}
 
@@ -104,6 +112,9 @@ void loop() {
   Serial.print("....................\n");
   Serial.print("Velocidade do vento:  ");
   Serial.println(Data.wind_speed);
+  Serial.print("Velocidade Maxima: ");
+  Serial.println(1000.0/Data.SmallestTime);
+
   Serial.print("Chuva acumulada....:  ");
   Serial.println(Data.rain_acc);
   Serial.print("Umidade............:  ");
@@ -122,11 +133,21 @@ void loop() {
   sendMeasurementToMqtt(json_output);
 
   Serial.println("ok\n");
+
+  float temperature = bmp.readTemperature();
+  float pressure = bmp.readPressure() / 100.0; // Convert Pa to hPa
+
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.print(" °C, Pressure: ");
+  Serial.print(pressure);
+  Serial.println(" hPa");
+
 }
 
 int getWindDir() {
   long long val, x, reading;
-  val = analogRead(VANE_PIN);
+  val = (analogRead(VANE_PIN)+analogRead(VANE_PIN)+analogRead(VANE_PIN))/3;
   int closestIndex = 0;
   int closestDifference = std::abs(val - adc[0]);
 
@@ -142,7 +163,9 @@ int getWindDir() {
 
 void anemometerChange() {
   unsigned long currentMillis = millis();
-  if (currentMillis - lastVVTImpulseTime >= DEBOUNCE_DELAY) {
+  if (unsigned long deltaTime = currentMillis - lastVVTImpulseTime >= DEBOUNCE_DELAY) {
+
+    if (deltaTime< Data.SmallestTime)Data.SmallestTime = deltaTime;
     anemometerCounter++;
     lastVVTImpulseTime = currentMillis;
   }
@@ -163,8 +186,11 @@ void DHTRead() {
   // Verifica se alguma leitura falhou
   if (isnan(humidity) || isnan(temperature)) {
     Serial.println("Falha ao ler o sensor DHT!");
+    falha = true;
     return;
   }
+  else falha = false;
+  
 
   Data.humidity = humidity;
   Data.temperature = temperature;
