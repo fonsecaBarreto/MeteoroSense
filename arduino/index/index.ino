@@ -14,6 +14,19 @@ extern unsigned int rainCounter;
 extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 
+union {
+    char ch;
+    struct {
+        bool div  : 1;
+        bool vvt  : 1;
+        bool dht  : 1;
+        bool bmp  : 1;
+        bool aux1 : 1;
+        bool aux2 : 1;
+        bool aux3 : 1;
+        bool aux4 : 1;
+    } bits;
+}sensors;
 
 // dto
 struct
@@ -25,23 +38,6 @@ struct
   float pressure = 0;
   int wind_dir = -1;
 } Data;
-
-
-
-union {
-    char ch;
-    struct {
-        bool div  : 1;
-        bool vvt  : 1;
-        bool dht  : 1;
-        bool bmp  : 1;
-        bool aux1 : 1;
-        bool aux2 : 2;
-        bool aux3 : 3;
-        bool aux4 : 4;
-    } bits;
-}sensors;
-
 
 
 char json_output[240]{0};
@@ -81,35 +77,32 @@ void loop()
 
   timeClient.update();
   int timestamp = timeClient.getEpochTime();
-  Serial.print("Iniciando medição em: ");
-  Serial.println(timestamp);
 
   while(millis() < startTime + INTERVAL);
   startTime = millis();
-  // calc
+
+  // controllers
   Data.wind_dir = getWindDir();
   Data.wind_speed = 2.625 * (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0); // m/s
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
-  if (sensors.bits.dht)DHTRead(Data.humidity,Data.temperature);
+  if (sensors.bits.dht)DHTRead(Data.humidity, Data.temperature);
   if (sensors.bits.bmp)BMPRead(Data.pressure);
+
   // presentation
-  presentation();
-  DataToJson(timestamp);
-  Serial.println(json_output);
-  Serial.print("Enviando...........:  ");
-  sendMeasurementToMqtt(json_output);
-  Serial.println("ok\n");
+  presentation(timestamp);
+ 
   anemometerCounter = 0;
   rainCounter = 0;
-   
-  
 }
 
 
 
-void presentation()
+void presentation(long timestamp)
 {
   Serial.print("....................\n");
+
+  Serial.print("Timestamp..........:  ");
+  Serial.println(timestamp);
 
   Serial.print("Velocidade do vento:  ");
   Serial.println(Data.wind_speed);
@@ -128,9 +121,17 @@ void presentation()
   Serial.print(strVals[Data.wind_dir]);
   Serial.println(Data.wind_dir);
 
-  Serial.print("Pressure: ");
+  Serial.print("Pressao............: ");
   Serial.print(Data.pressure);
   Serial.println(" hPa");
+
+  // mqqt 
+  DataToJson(timestamp);
+  Serial.println(json_output);
+  Serial.print("Enviando...........:  ");
+
+  sendMeasurementToMqtt(json_output);
+  Serial.println("ok\n");
 
 }
 

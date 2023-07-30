@@ -16,9 +16,6 @@ unsigned int rainCounter = 0;
 unsigned long lastVVTImpulseTime = 0;
 float anemometerCounter = 0.0f;
 
-
-
-
 void beginDHT()
 {
 dht.begin();
@@ -31,7 +28,6 @@ void beginBMP()
     //sensors.bits.bmp=false;
   }
 }
-
 
 int getWindDir() {
   long long val, x, reading;
@@ -88,19 +84,13 @@ void DHTRead(float& hum, float& temp) {
 //Pressao
 void BMPRead(float& press)
 {
-  float temperature = bmp.readTemperature();
+  // float temperature = bmp.readTemperature(); // isnan(temperature)
   float pressure = bmp.readPressure() / 100.0; // Convert Pa to hPa
-  if (isnan(temperature) || isnan(pressure)) 
+  if (isnan(pressure)) 
   {
     Serial.println("Falha ao ler o sensor BMP180!");
-    //falha = true;
     press = -1;
+    return;
   }
-  else
-  {
-    press = pressure;
-    Serial.print("Temperature: ");
-    Serial.print(temperature);
-    Serial.print(" °C");
-  }
+  press = pressure;
 }
