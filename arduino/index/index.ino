@@ -61,7 +61,7 @@ void setup()
 
   connectWifi();
   connectNtp();
-  connectMqtt();
+  setupMqtt();
   
   beginDHT();
   beginBMP();
@@ -75,20 +75,26 @@ void setup()
 void loop()
  {
 
+  // Reconnect mqqtt if disconected
+  if (!mqttClient.connected()) connectMqtt();
+  mqttClient.loop();
+
+  // Update time stamp
   timeClient.update();
   int timestamp = timeClient.getEpochTime();
 
+  // Timeout 
   while(millis() < startTime + INTERVAL);
   startTime = millis();
 
-  // controllers
+  // Controllers
   Data.wind_dir = getWindDir();
   Data.wind_speed = 2.625 * (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0); // m/s
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
   if (sensors.bits.dht)DHTRead(Data.humidity, Data.temperature);
   if (sensors.bits.bmp)BMPRead(Data.pressure);
 
-  // presentation
+  // Presentation
   presentation(timestamp);
  
   anemometerCounter = 0;
@@ -127,11 +133,7 @@ void presentation(long timestamp)
 
   // mqqt 
   DataToJson(timestamp);
-  Serial.println(json_output);
-  Serial.print("Enviando...........:  ");
-
+  Serial.println("Enviando...........:  ");
   sendMeasurementToMqtt(json_output);
-  Serial.println("ok\n");
-
 }
 
