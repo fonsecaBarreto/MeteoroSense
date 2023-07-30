@@ -9,7 +9,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoMqttClient.h>
-
+#include "constants.h"
 // wifi
 const char* ssid = "Gabriel";
 const char* password = "2014072276";
@@ -60,7 +60,8 @@ int connectMqtt()
     Serial.print("MQTT connection failed! Error code = ");
     Serial.println(mqttClient.connectError());
 
-    while (1);
+    //while (1);
+    return 0;    
   }
 
   Serial.println("You're connected to the MQTT broker!");
