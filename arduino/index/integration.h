@@ -3,10 +3,13 @@
 // Data: 01/06/2023
 //.........................................................................................................................
 #pragma once
+//#include <ESP8266WiFi.h>
+//#include <WiFiUdp.h>
+#include <NTPClient.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoMqttClient.h>
-
+#include "constants.h"
 // wifi
 const char* ssid = "Gabriel";
 const char* password = "2014072276";
@@ -16,6 +19,10 @@ const String API_URL = "http://192.168.0.173:3000/csv";
 const char broker[] = "telemetria.macae.ufrj.br";
 int port = 1883;
 const char topic[] = "/prefeituras/macae/estacoes/est001";
+
+
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
 
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
@@ -33,9 +40,15 @@ int connectWifi() {
   Serial.println("\nConnected to the WiFi network");
   Serial.print("Local ESP32 IP: ");
   Serial.println(WiFi.localIP());
+
   return 1;
 }
 
+int connectNtp(){
+  Serial.println("\nStarting ntp connection");
+  timeClient.begin();
+  return 1;
+}
 int connectMqtt()
 {
   Serial.print("Attempting to connect to the MQTT broker: ");
@@ -47,7 +60,8 @@ int connectMqtt()
     Serial.print("MQTT connection failed! Error code = ");
     Serial.println(mqttClient.connectError());
 
-    while (1);
+    //while (1);
+    return 0;    
   }
 
   Serial.println("You're connected to the MQTT broker!");
