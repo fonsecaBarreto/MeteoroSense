@@ -4,12 +4,16 @@
 
 #pragma once
 #include <WiFi.h>
+// #include <WiFiClientSecure.h>
 #include <NTPClient.h>
 #include <PubSubClient.h>
 #include "conf.h"
 
 /**** WIFI Client Initialisation *****/
 WiFiClient wifiClient;
+
+/**** Secure WiFi Connectivity Initialisation *****/
+// WiFiClientSecure secureWifiClient;
 
 /**** NTP Client Initialisation  *****/
 WiFiUDP ntpUDP;
@@ -37,6 +41,7 @@ int connectWifi()
   Serial.println("\nConnected to the WiFi network");
   Serial.print("Local ESP32 IP: ");
   Serial.println(WiFi.localIP());
+  // secureWifiClient.setCACert(root_ca);      // enable this line and the the "certificate" code for secure connection
   return 1;
 }
 
