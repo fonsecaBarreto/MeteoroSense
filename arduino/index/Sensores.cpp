@@ -15,6 +15,9 @@ unsigned int rainCounter = 0;
 // Anemometro (Velocidade do vento)
 unsigned long lastVVTImpulseTime = 0;
 float anemometerCounter = 0.0f;
+unsigned long smallestDeltatime=4294967295;
+
+Sensors sensors;
 
 void beginDHT()
 {
@@ -23,10 +26,13 @@ dht.begin();
 
 void beginBMP()
 {
-  if (!bmp.begin()) {
+  bool bmp_Begin = bmp.begin();
+  sensors.bits.bmp=bmp_Begin;
+  if (!bmp_Begin) {
     Serial.println("Could not find a valid BMP180 sensor, check wiring!");
-    //sensors.bits.bmp=false;
+    
   }
+
 }
 
 int getWindDir() {
@@ -35,7 +41,7 @@ int getWindDir() {
   int closestIndex = 0;
   int closestDifference = std::abs(val - adc[0]);
 
-  for (int i = 1; i < 8; i++) {
+  for (int i = 1; i < NUMDIRS; i++) {
     int difference = std::abs(val - adc[i]);
     if (difference < closestDifference) {
       closestDifference = difference;
@@ -47,7 +53,9 @@ int getWindDir() {
 
 void anemometerChange() {
   unsigned long currentMillis = millis();
-  if (currentMillis - lastVVTImpulseTime >= DEBOUNCE_DELAY) {
+  unsigned long deltaTime = currentMillis - lastVVTImpulseTime;
+  if (deltaTime >= DEBOUNCE_DELAY) {
+    smallestDeltatime = min(deltaTime, smallestDeltatime);
     anemometerCounter++;
     lastVVTImpulseTime = currentMillis;
   }
@@ -71,7 +79,7 @@ void DHTRead(float& hum, float& temp) {
     Serial.println("Falha ao ler o sensor DHT!");
     falha = true;
     hum = -1;
-    temp = FLT_MAX;
+    temp = -273.15;
     return;
   }
   else falha = false;

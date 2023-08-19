@@ -30,16 +30,18 @@ int connectWifi()
 {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  Serial.println("\nConnecting");
+  Serial.print("\Wifi connection: trying to connect ");
 
   while (WiFi.status() != WL_CONNECTED)
   {
     Serial.print(".");
     delay(100);
   }
-
-  Serial.println("\nConnected to the WiFi network");
-  Serial.print("Local ESP32 IP: ");
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(true);
+  
+  Serial.println("\nWifi connection: Connected to the WiFi network");
+  Serial.print("Wifi connection: Local ESP32 IP: ");
   Serial.println(WiFi.localIP());
   // secureWifiClient.setCACert(root_ca);      // enable this line and the the "certificate" code for secure connection
   return 1;
@@ -52,14 +54,14 @@ void callback(char *topic, byte *payload, unsigned int length)
   String incommingMessage = "";
   for (int i = 0; i < length; i++)
     incommingMessage += (char)payload[i];
-  Serial.println("Recebimento confirmado [" + String(topic) + "]" + incommingMessage);
+  Serial.println("MQTT broker: Recebimento confirmado [" + String(topic) + "]" + incommingMessage);
 }
 
 int sendMeasurementToMqtt(const char *payload)
 {
   if (mqttClient.publish(mqtt_topic, payload, true))
   {
-    Serial.println("Message publised [" + String(mqtt_topic) + "]: " + payload);
+    Serial.println("MQTT broker: Message publised [" + String(mqtt_topic) + "]: " + payload);
   }
   return 1;
 }
@@ -73,7 +75,7 @@ int setupMqtt()
 
 int connectMqtt()
 {
-  Serial.print("Attempting to connect to the MQTT broker: ");
+  Serial.print("MQTT broker: ");
   while (!mqttClient.connected())
   {
     Serial.print("Attempting MQTT connection...");
@@ -99,7 +101,8 @@ int connectMqtt()
 /* Ntp Client */
 int connectNtp()
 {
-  Serial.println("\nStarting ntp connection");
+  Serial.println("NTP connection : Tentando conectar....");
   timeClient.begin();
+  Serial.println("NTP connection : Conectado com sucesso.");
   return 1;
 }

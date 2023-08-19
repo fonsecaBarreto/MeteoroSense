@@ -1,8 +1,8 @@
 #pragma once
 
 // constants
-#define STATION_ID "001"
-#define STATION_P "est001"
+#define STATION_ID "02"
+#define STATION_P "est002"
 #define INTERVAL 60000       // Intervalo de Tempo entre medições [ms]
 #define DEBOUNCE_DELAY 25   // [ms]
 
@@ -21,8 +21,10 @@
 
 //Biruta
 #define NUMDIRS 8
-inline int adc[NUMDIRS] = {480,600,800,1150,1820,250,305,380};
-inline char* strVals[NUMDIRS] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+//inline int adc[NUMDIRS] = {480,600,800,1150,1820,250,305,380};
+//inline char* strVals[NUMDIRS] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+inline int adc[NUMDIRS] = {800, 600, 480, 380, 305, 250, 1820, 1150};
+inline char* strVals[NUMDIRS] = {"E", "NE", "N", "NW", "W", "SW", "S", "SE"};
 inline char dirOffset = 0;
 
 inline bool falha = false;
