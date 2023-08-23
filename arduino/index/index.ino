@@ -3,6 +3,8 @@
 //.........................................................................................................................
 
 #include "constants.h"
+#include "conf.h"
+#include "sd-repository.h"
 #include "integration.h"
 #include "sensores.h"
 
@@ -16,7 +18,7 @@ extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
 extern Sensors sensors;
 
-// dto
+/******* Objeto de Transferência de Dados *******/
 struct
 {
   float wind_speed = 0;
@@ -38,21 +40,27 @@ void DataToJson(long timestamp){
 
 void setup()
  {
+  Serial.begin(115200);
   sensors.ch = (char)255;
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
   pinMode(PLV_PIN, INPUT_PULLDOWN);
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
   attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
 
-  Serial.begin(115200);
-  delay(1000);
+  delay(2000);
   Serial.println("\n///////////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////////\n");
 
-  connectWifi();
+  // Libs
+  loadConfiguration(SD, configFileName, config);
+
+  connectWifi(config.wifi_ssid, config.wifi_password);
+
   connectNtp();
-  setupMqtt();
+
+  setupMqtt(config.mqtt_server, config.mqtt_port);
   
   beginDHT();
+
   beginBMP();
 
   int now = millis();
@@ -71,10 +79,10 @@ void loop()
   Serial.println(")\n");
 
   // Reconnect mqqtt if disconected
-  if (!mqttClient.connected()) connectMqtt();
+  if (!mqttClient.connected()) connectMqtt(config.mqtt_username, config.mqtt_password, config.mqtt_topic);
 
   // Timeout 
-  while(millis() < startTime + INTERVAL){
+  while(millis() < startTime + config.interval){
     mqttClient.loop();
   };
   startTime = millis();
@@ -132,7 +140,7 @@ void presentation(long timestamp)
   // mqqt 
   DataToJson(timestamp);
   Serial.println("\n3. Enviando Resultado:  \n");
-  sendMeasurementToMqtt(json_output);
+  sendMeasurementToMqtt(config.mqtt_topic, json_output);
   Serial.println("..........................................");
 }
 
