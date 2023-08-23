@@ -1,13 +1,22 @@
-/******* WIFI *******/
-const char *ssid = "Gabriel";
-const char *password = "2014072276";
+#pragma once
+/******* Configuração de ambiente *******/
 
-/******* MQTT Broker Connection Details *******/
-const char *mqtt_server = "telemetria.macae.ufrj.br";
-const char *mqtt_username = "telemetria";
-const char *mqtt_password = "kancvx8thz9FCN5jyq";
-const char *mqtt_topic = "/prefeituras/macae/estacoes/est001";
-const int mqtt_port = 1883;
+struct Config {
+  char station_uid[64];
+  char station_name[64];
+  char wifi_ssid[64];
+  char wifi_password[64];
+  char mqtt_server[64]; 
+  char mqtt_username[64]; 
+  char mqtt_password[64]; 
+  char mqtt_topic[64]; 
+  int mqtt_port;
+  int interval;
+} ;
+
+struct Config config;
+
+const char *configFileName = "/config.txt";
 
 /****** root certificate *********/
 

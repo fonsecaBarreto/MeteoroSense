@@ -7,7 +7,6 @@
 // #include <WiFiClientSecure.h>
 #include <NTPClient.h>
 #include <PubSubClient.h>
-#include "conf.h"
 
 /**** WIFI Client Initialisation *****/
 WiFiClient wifiClient;
@@ -26,7 +25,7 @@ unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE (50)
 char msg[MSG_BUFFER_SIZE];
 
-int connectWifi()
+int connectWifi(char* ssid, char*password)
 {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -57,23 +56,23 @@ void callback(char *topic, byte *payload, unsigned int length)
   Serial.println("MQTT broker: Recebimento confirmado [" + String(topic) + "]" + incommingMessage);
 }
 
-int sendMeasurementToMqtt(const char *payload)
+int sendMeasurementToMqtt(char *topic, const char *payload)
 {
-  if (mqttClient.publish(mqtt_topic, payload, true))
+  if (mqttClient.publish(topic, payload, true))
   {
-    Serial.println("MQTT broker: Message publised [" + String(mqtt_topic) + "]: " + payload);
+    Serial.println("MQTT broker: Message publised [" + String(topic) + "]: " + payload);
   }
   return 1;
 }
 
-int setupMqtt()
+int setupMqtt(char* mqtt_server, int mqtt_port)
 {
   mqttClient.setServer(mqtt_server, mqtt_port);
   mqttClient.setCallback(callback);
   return 1;
 }
 
-int connectMqtt()
+int connectMqtt(char* mqtt_username, char* mqtt_password, char* mqtt_topic)
 {
   Serial.print("MQTT broker: ");
   while (!mqttClient.connected())
