@@ -17,7 +17,7 @@ extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
 extern Sensors sensors;
-
+bool first = true;
 /******* Objeto de Transferência de Dados *******/
 struct
 {
@@ -35,8 +35,25 @@ char json_output[240]{0};
 
 void DataToJson(long timestamp){
   const char* csv_header = "{\"timestamp\": %i, \"temperatura\": %.2f, \"umidade_ar\": %.2f, \"velocidade_vento\": %.2f, \"rajada_vento\": %.2f, \"dir_vento\": %d, \"volume_chuva\": %.2f, \"pressao\": %.2f, \"uid\": \"%s\", \"identidade\": \"%s\"}";
-  sprintf(json_output, csv_header,timestamp,Data.temperature,Data.humidity, Data.wind_speed,Data.wind_gust, Data.wind_dir, Data.rain_acc,Data.pressure,STATION_ID,STATION_P );
+  sprintf(json_output, csv_header,timestamp,Data.temperature,Data.humidity, Data.wind_speed,Data.wind_gust, Data.wind_dir, Data.rain_acc,Data.pressure,config.station_uid,config.station_name );
 }
+
+void readLine(fs::FS &fs, const char * path){
+    Serial.printf("Reading file: %s\n", path);
+
+    File file = fs.open(path);
+    if(!file){
+        Serial.println("Failed to open file for reading");
+        return;
+    }
+
+    Serial.print("Read from file: ");
+    while(file.available()){
+         sendMeasurementToMqtt(config.mqtt_topic, file.readStringUntil('\n').c_str());
+    }
+    file.close();
+}
+
 
 void setup()
  {
@@ -67,6 +84,8 @@ void setup()
   lastVVTImpulseTime = now;
   lastPVLImpulseTime = now;
   startTime = now;
+
+  
 }
 
 void loop()
@@ -80,6 +99,13 @@ void loop()
 
   // Reconnect mqqtt if disconected
   if (!mqttClient.connected()) connectMqtt(config.mqtt_username, config.mqtt_password, config.mqtt_topic);
+
+  if(first)
+  {
+    readLine(SD,"/dados.txt");
+    first = false;
+  }
+
 
   // Timeout 
   while(millis() < startTime + config.interval){
@@ -97,11 +123,13 @@ void loop()
   if (sensors.bits.bmp)BMPRead(Data.pressure);
   else beginBMP();
 
+
   presentation(timestamp);
  
   anemometerCounter = 0;
   rainCounter = 0;
   smallestDeltatime=4294967295;
+  
 }
 
 void presentation(long timestamp)
@@ -140,6 +168,8 @@ void presentation(long timestamp)
   // mqqt 
   DataToJson(timestamp);
   Serial.println("\n3. Enviando Resultado:  \n");
+  appendFile(SD,"/dados.txt",json_output);
+  appendFile(SD,"/dados.txt","\n");
   sendMeasurementToMqtt(config.mqtt_topic, json_output);
   Serial.println("..........................................");
 }

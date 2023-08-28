@@ -78,6 +78,7 @@ void loadConfiguration(fs::FS &fs, const char *filename, Config &config)
 void readFile(fs::FS &fs, const char *path, char *buffer, size_t bufferSize)
 {
   Serial.printf("Lendo arquivo: %s\n", path);
+  //SPI.begin(clockPin, misoPin, mosiPin);
   File file = fs.open(path);
   if (!file)
   {
@@ -88,3 +89,26 @@ void readFile(fs::FS &fs, const char *path, char *buffer, size_t bufferSize)
   buffer[bytesRead] = '\0'; // Null-terminate the buffer
   file.close();
 }
+
+
+
+
+
+
+void appendFile(fs::FS &fs, const char * path, const char * message){
+    Serial.printf("Appending to file: %s\n", path);
+
+    File file = fs.open(path, FILE_APPEND);
+    if(!file){
+        Serial.println("Failed to open file for appending");
+        return;
+    }
+    if(file.print(message)){
+        Serial.println("Message appended");
+    } else {
+        Serial.println("Append failed");
+    }
+    file.close();
+}
+
+
