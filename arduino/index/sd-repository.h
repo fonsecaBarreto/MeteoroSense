@@ -11,6 +11,7 @@ const int mosiPin = 23;
 const int misoPin = 27;
 const int clockPin = 25;
 
+
 void loadConfiguration(fs::FS &fs, const char *filename, Config &config)
 {
 
@@ -75,40 +76,50 @@ void loadConfiguration(fs::FS &fs, const char *filename, Config &config)
   Serial.println();
 }
 
-void readFile(fs::FS &fs, const char *path, char *buffer, size_t bufferSize)
-{
-  Serial.printf("Lendo arquivo: %s\n", path);
-  //SPI.begin(clockPin, misoPin, mosiPin);
-  File file = fs.open(path);
-  if (!file)
-  {
-    Serial.println("Failed to open file for reading");
-    return;
-  }
-  size_t bytesRead = file.readBytes(buffer, bufferSize - 1);
-  buffer[bytesRead] = '\0'; // Null-terminate the buffer
-  file.close();
-}
-
-
-
-
-
-
 void appendFile(fs::FS &fs, const char * path, const char * message){
-    Serial.printf("Appending to file: %s\n", path);
+    Serial.printf("Salvando nova metrica no cartçao SD: %s\n", path);
 
     File file = fs.open(path, FILE_APPEND);
     if(!file){
-        Serial.println("Failed to open file for appending");
+        Serial.println("Falha ao encontrar cartão SD");
         return;
     }
     if(file.print(message)){
-        Serial.println("Message appended");
+        Serial.println("Nova linha salva com sucesso.");
     } else {
-        Serial.println("Append failed");
+        Serial.println("Falha ao salvar nova linha");
     }
     file.close();
 }
 
+void storeMeasurement( String fileName, const char *payload){
+  char charArray[100];
+  fileName.concat(".txt");
+  fileName.toCharArray(charArray, fileName.length() + 1);
+  appendFile(SD, charArray, payload);
+}
 
+
+/*if(first)
+  {
+    readLine(SD,"/dados.txt");
+    first = false;
+  }
+*/
+
+/* void readLine(fs::FS &fs, const char * path){
+    Serial.printf("Reading file: %s\n", path);
+
+    File file = fs.open(path);
+    if(!file){
+        Serial.println("Failed to open file for reading");
+        return;
+    }
+
+    Serial.print("Read from file: ");
+    while(file.available()){
+         sendMeasurementToMqtt(config.mqtt_topic, file.readStringUntil('\n').c_str());
+    }
+    file.close();
+}
+ */

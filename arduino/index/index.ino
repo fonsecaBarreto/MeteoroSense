@@ -17,7 +17,6 @@ extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
 extern Sensors sensors;
-bool first = true;
 /******* Objeto de Transferência de Dados *******/
 struct
 {
@@ -31,32 +30,23 @@ struct
 } Data;
 
 
+String formatedDateString = "";
 char json_output[240]{0};
+char csv_header[200]{0};
+char csv_output[200]{0};
 
-void DataToJson(long timestamp){
-  const char* csv_header = "{\"timestamp\": %i, \"temperatura\": %.2f, \"umidade_ar\": %.2f, \"velocidade_vento\": %.2f, \"rajada_vento\": %.2f, \"dir_vento\": %d, \"volume_chuva\": %.2f, \"pressao\": %.2f, \"uid\": \"%s\", \"identidade\": \"%s\"}";
-  sprintf(json_output, csv_header,timestamp,Data.temperature,Data.humidity, Data.wind_speed,Data.wind_gust, Data.wind_dir, Data.rain_acc,Data.pressure,config.station_uid,config.station_name );
+void parseData(long timestamp)
+{
+  const char *json_template = "{\"timestamp\": %i, \"temperatura\": %.2f, \"umidade_ar\": %.2f, \"velocidade_vento\": %.2f, \"rajada_vento\": %.2f, \"dir_vento\": %d, \"volume_chuva\": %.2f, \"pressao\": %.2f, \"uid\": \"%s\", \"identidade\": \"%s\"}";
+  sprintf(json_output, json_template, timestamp, Data.temperature, Data.humidity, Data.wind_speed, Data.wind_gust, Data.wind_dir, Data.rain_acc, Data.pressure, config.station_uid, config.station_name);
+
+  const char *csv_template = "%i,%.2f,%.2f,%.2f,%.2f,%d,%.2f,%.2f,%s,%s\n";
+  sprintf(csv_header, "%s\ntimestamp,temperatura,umidade_ar,velocidade_vento,rajada_vento,dir_vento,volume_chuva,pressao,uid,identidade\n", formatedDateString);
+  sprintf(csv_output, csv_template, timestamp, Data.temperature, Data.humidity, Data.wind_speed, Data.wind_gust, Data.wind_dir, Data.rain_acc, Data.pressure, config.station_uid, config.station_name);
 }
-
-void readLine(fs::FS &fs, const char * path){
-    Serial.printf("Reading file: %s\n", path);
-
-    File file = fs.open(path);
-    if(!file){
-        Serial.println("Failed to open file for reading");
-        return;
-    }
-
-    Serial.print("Read from file: ");
-    while(file.available()){
-         sendMeasurementToMqtt(config.mqtt_topic, file.readStringUntil('\n').c_str());
-    }
-    file.close();
-}
-
 
 void setup()
- {
+{
   Serial.begin(115200);
   sensors.ch = (char)255;
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
@@ -75,7 +65,7 @@ void setup()
   connectNtp();
 
   setupMqtt(config.mqtt_server, config.mqtt_port);
-  
+
   beginDHT();
 
   beginBMP();
@@ -84,31 +74,25 @@ void setup()
   lastVVTImpulseTime = now;
   lastPVLImpulseTime = now;
   startTime = now;
-
-  
 }
 
 void loop()
- {
+{
   // Update time stamp
   timeClient.update();
   int timestamp = timeClient.getEpochTime();
+  convertTimeToLocaleDate(timestamp);
   Serial.print("\n1. Iniciando nova interação (");
-  Serial.print(timeClient.getFormattedTime());
-  Serial.println(")\n");
+  Serial.println(String(formatedDateString) + "T" + String(timeClient.getFormattedTime())+ String(")"));
 
   // Reconnect mqqtt if disconected
-  if (!mqttClient.connected()) connectMqtt(config.mqtt_username, config.mqtt_password, config.mqtt_topic);
-
-  if(first)
-  {
-    readLine(SD,"/dados.txt");
-    first = false;
+  if (!mqttClient.connected()){
+    connectMqtt(config.mqtt_username, config.mqtt_password, config.mqtt_topic);
   }
 
-
-  // Timeout 
-  while(millis() < startTime + config.interval){
+  // Timeout
+  while (millis() < startTime + config.interval)
+  {
     mqttClient.loop();
   };
   startTime = millis();
@@ -116,20 +100,20 @@ void loop()
   // Controllers
   Data.wind_dir = getWindDir();
   Data.wind_speed = 3.052 * (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0); // m/s
-  Data.wind_gust = (3052.0f * ANEMOMETER_CIRC)/smallestDeltatime;
+  Data.wind_gust = (3052.0f * ANEMOMETER_CIRC) / smallestDeltatime;
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
-  
-  if (sensors.bits.dht)DHTRead(Data.humidity, Data.temperature);
-  if (sensors.bits.bmp)BMPRead(Data.pressure);
-  else beginBMP();
 
+  if (sensors.bits.dht)
+    DHTRead(Data.humidity, Data.temperature);
+  if (sensors.bits.bmp)
+    BMPRead(Data.pressure);
+  else
+    beginBMP();
 
   presentation(timestamp);
- 
   anemometerCounter = 0;
   rainCounter = 0;
-  smallestDeltatime=4294967295;
-  
+  smallestDeltatime = 4294967295;
 }
 
 void presentation(long timestamp)
@@ -147,11 +131,11 @@ void presentation(long timestamp)
 
   Serial.print("Umidade............:  ");
   Serial.println(Data.humidity);
-  
+
   Serial.print("Temperatura........:  ");
   Serial.print(Data.temperature);
   Serial.println("°C");
-  
+
   Serial.print("Direção do vento...:  ");
   Serial.print(strVals[Data.wind_dir]);
   Serial.println(Data.wind_dir);
@@ -163,14 +147,24 @@ void presentation(long timestamp)
   Serial.print("menor: ");
   Serial.println(smallestDeltatime);
   Serial.print("1/menor: ");
-  Serial.println( (3052.0f * ANEMOMETER_CIRC)/smallestDeltatime);
-
-  // mqqt 
-  DataToJson(timestamp);
+  Serial.println((3052.0f * ANEMOMETER_CIRC) / smallestDeltatime);
+  // mqqt
+  parseData(timestamp);
   Serial.println("\n3. Enviando Resultado:  \n");
-  appendFile(SD,"/dados.txt",json_output);
-  appendFile(SD,"/dados.txt","\n");
   sendMeasurementToMqtt(config.mqtt_topic, json_output);
+
+  Serial.println("\n4. Gravando dados:  \n");
+  storeMeasurement(formatedDateString, csv_output);
   Serial.println("..........................................");
 }
 
+void convertTimeToLocaleDate(long timestamp)
+{
+  // Calcula a data a partir do epoch time
+  struct tm *ptm = gmtime((time_t *)&timestamp);
+  int day = ptm->tm_mday;
+  int month = ptm->tm_mon + 1;
+  int year = ptm->tm_year + 1900;
+  // Formata a data como "dd/mm/yyyy"
+  formatedDateString = String(day) + "-" + String(month) + "-" + String(year);
+}
