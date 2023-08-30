@@ -154,7 +154,7 @@ void presentation(long timestamp)
   sendMeasurementToMqtt(config.mqtt_topic, json_output);
 
   Serial.println("\n4. Gravando dados:  \n");
-  storeMeasurement(formatedDateString, csv_output);
+  storeMeasurement(formatedDateString, csv_header,csv_output);
   Serial.println("..........................................");
 }
 

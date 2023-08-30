@@ -77,7 +77,7 @@ void loadConfiguration(fs::FS &fs, const char *filename, Config &config)
 }
 
 void appendFile(fs::FS &fs, const char * path, const char * message){
-    Serial.printf("Salvando nova metrica no cartçao SD: %s\n", path);
+    Serial.printf("Salvando nova metrica no cartao SD: %s\n", path); 
 
     File file = fs.open(path, FILE_APPEND);
     if(!file){
@@ -92,11 +92,25 @@ void appendFile(fs::FS &fs, const char * path, const char * message){
     file.close();
 }
 
-void storeMeasurement( String fileName, const char *payload){
-  char charArray[100];
-  fileName.concat(".txt");
-  fileName.toCharArray(charArray, fileName.length() + 1);
-  appendFile(SD, charArray, payload);
+void storeMeasurement( String fileName, const char* header,const char *payload){
+
+
+  String path = "/metricas/" + fileName + ".txt";
+    if (!SD.exists("/metricas")) {
+        if (SD.mkdir("/metricas")) {
+            Serial.println("Directory created successfully.");
+        } else {
+            Serial.println("Failed to create directory.");
+        }
+    }
+
+   if (!SD.exists(path.c_str()))
+   {
+    Serial.println("Creating file");
+    appendFile(SD, path.c_str(), header);
+   }
+   else Serial.println("Creating found");
+  appendFile(SD,  path.c_str(), payload);
 }
 
 
