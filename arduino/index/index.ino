@@ -142,14 +142,16 @@ void presentation(long timestamp)
 
   // local storage
   Serial.println("\n3. Gravando em disco:");
-  storeMeasurement(formatedDateString, csv_header, csv_output);
+  storeMeasurement("/metricas", formatedDateString, csv_output);
 
   // mqqt
   parseData(timestamp);
   Serial.println("\n4. Enviando Resultado:  \n");
   bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, json_output);
-  Serial.print("Foi enviado: ");
-  Serial.println(measurementSent);
+  if(measurementSent == false){
+    Serial.print('4.2 Salvando Dados para serem enviados posteriorment');
+    storeMeasurement("/retries", String(timestamp), json_output);
+  }
 }
 
 void parseData(long timestamp)
@@ -170,7 +172,7 @@ void parseData(long timestamp)
 
   // parse measurement data to csv
   const char *csv_template = "%i,%s,%s,%.2f,%.2f,%d,%.2f,%s,%s,%s\n";
-  sprintf(csv_header, "%s\ntimestamp,temperatura,umidade_ar,velocidade_vento,rajada_vento,dir_vento,volume_chuva,pressao,uid,identidade\n", formatedDateString);
+  sprintf(csv_header, "%s\ntimestamp,temperatura,umidade_ar,velocidade_vento,rajada_vento,dir_vento,volume_chuva,pressao,uid,identidade", formatedDateString);
   sprintf(csv_output, csv_template, 
     timestamp, 
     isnan(Data.temperature) ? "null" : String(Data.temperature), 

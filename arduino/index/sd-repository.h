@@ -80,35 +80,37 @@ void loadConfiguration(fs::FS &fs, const char *filename, Config &config)
 }
 
 void appendFile(fs::FS &fs, const char * path, const char * message){
-    Serial.printf("Salvando nova metrica no cartao SD: %s\n", path); 
+    Serial.printf(" - Salvando dados no cartao SD: %s\n", path); 
 
     File file = fs.open(path, FILE_APPEND);
     if(!file){
-        Serial.println("Falha ao encontrar cartão SD");
+        Serial.println(" - Falha ao encontrar cartão SD");
         return;
     }
     if(file.print(message)){
-        Serial.println("Nova linha salva com sucesso.");
+        Serial.println(" - Nova linha salva com sucesso.");
     } else {
-        Serial.println("Falha ao salvar nova linha");
+        Serial.println(" - Falha ao salvar nova linha");
     }
     file.close();
 }
 
-void storeMeasurement( String fileName, const char* header,const char *payload){
-
-  String path = "/metricas/" + fileName + ".txt";
-  if (!SD.exists("/metricas")) {
-    if (SD.mkdir("/metricas")) {
-      Serial.println("Diretorio de metricas criado com sucesso!");
+void storeMeasurement(String directory, String fileName,const char *payload){
+  String path = directory + "/" + fileName + ".txt";
+  if (!SD.exists(directory)) {
+    if (SD.mkdir(directory)) {
+      Serial.println(" - Diretorio criado com sucesso!");
     } else {
       Serial.println(" - Falha ao criar diretorio de metricas.");
     }
   }
-  if (!SD.exists(path.c_str())){
-    Serial.println(" - Criando novo arquivo diario");
-    appendFile(SD, path.c_str(), header);
-  }
-  Serial.println(" - Atualizando arquivo diario");
-  appendFile(SD,  path.c_str(), payload); 
+  Serial.println(" - Atualizando arquivo.");
+  appendFile(SD, path.c_str(), (String(payload) + "\n").c_str());
 }
+
+/*   
+if (!SD.exists(path.c_str())){
+    Serial.println(" - Criando novo arquivo.");
+    appendFile(SD, path.c_str(), header);
+  } 
+*/

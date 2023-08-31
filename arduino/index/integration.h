@@ -46,7 +46,7 @@ void callback(char *topic, byte *payload, unsigned int length)
   Serial.println("MQTT broker: Recebimento confirmado [" + String(topic) + "]" + incommingMessage);
 }
 
-int sendMeasurementToMqtt(char *topic, const char *payload)
+bool sendMeasurementToMqtt(char *topic, const char *payload)
 {
   bool sent = (mqttClient.publish(topic, payload, true));
   if (sent){
