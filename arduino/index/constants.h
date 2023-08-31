@@ -1,8 +1,6 @@
 #pragma once
 
 // constants
-#define STATION_ID "02"
-#define STATION_P "est002"
 #define INTERVAL 60000       // Intervalo de Tempo entre medições [ms]
 #define DEBOUNCE_DELAY 25   // [ms]
 
