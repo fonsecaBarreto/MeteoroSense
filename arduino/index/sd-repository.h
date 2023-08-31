@@ -73,6 +73,9 @@ void loadConfiguration(fs::FS &fs, const char *filename, Config &config)
   Serial.print("MQRR_PORT: ");
   Serial.println(config.mqtt_port);
 
+  Serial.print("READ_INTERVAL: ");
+  Serial.println(config.interval);
+
   Serial.println();
 }
 
@@ -94,46 +97,18 @@ void appendFile(fs::FS &fs, const char * path, const char * message){
 
 void storeMeasurement( String fileName, const char* header,const char *payload){
 
-
   String path = "/metricas/" + fileName + ".txt";
-    if (!SD.exists("/metricas")) {
-        if (SD.mkdir("/metricas")) {
-            Serial.println("Directory created successfully.");
-        } else {
-            Serial.println("Failed to create directory.");
-        }
+  if (!SD.exists("/metricas")) {
+    if (SD.mkdir("/metricas")) {
+      Serial.println("Diretorio de metricas criado com sucesso!");
+    } else {
+      Serial.println(" - Falha ao criar diretorio de metricas.");
     }
-
-   if (!SD.exists(path.c_str()))
-   {
-    Serial.println("Creating file");
-    appendFile(SD, path.c_str(), header);
-   }
-   else Serial.println("Creating found");
-  appendFile(SD,  path.c_str(), payload);
-}
-
-
-/*if(first)
-  {
-    readLine(SD,"/dados.txt");
-    first = false;
   }
-*/
-
-/* void readLine(fs::FS &fs, const char * path){
-    Serial.printf("Reading file: %s\n", path);
-
-    File file = fs.open(path);
-    if(!file){
-        Serial.println("Failed to open file for reading");
-        return;
-    }
-
-    Serial.print("Read from file: ");
-    while(file.available()){
-         sendMeasurementToMqtt(config.mqtt_topic, file.readStringUntil('\n').c_str());
-    }
-    file.close();
+  if (!SD.exists(path.c_str())){
+    Serial.println(" - Criando novo arquivo diario");
+    appendFile(SD, path.c_str(), header);
+  }
+  Serial.println(" - Atualizando arquivo diario");
+  appendFile(SD,  path.c_str(), payload); 
 }
- */

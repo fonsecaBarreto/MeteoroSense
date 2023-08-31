@@ -25,23 +25,13 @@ unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE (50)
 char msg[MSG_BUFFER_SIZE];
 
-int connectWifi(char* ssid, char*password)
+int setupWifi(char* ssid, char*password)
 {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  Serial.print("\Wifi connection: trying to connect ");
-
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    Serial.print(".");
-    delay(100);
-  }
+  Serial.println("Wifi: Configuração inicial de wifi");
   WiFi.setAutoReconnect(true);
   WiFi.persistent(true);
-  
-  Serial.println("\nWifi connection: Connected to the WiFi network");
-  Serial.print("Wifi connection: Local ESP32 IP: ");
-  Serial.println(WiFi.localIP());
   // secureWifiClient.setCACert(root_ca);      // enable this line and the the "certificate" code for secure connection
   return 1;
 }
@@ -58,11 +48,13 @@ void callback(char *topic, byte *payload, unsigned int length)
 
 int sendMeasurementToMqtt(char *topic, const char *payload)
 {
-  if (mqttClient.publish(topic, payload, true))
-  {
+  bool sent = (mqttClient.publish(topic, payload, true));
+  if (sent){
     Serial.println("MQTT broker: Message publised [" + String(topic) + "]: " + payload);
+  } else {
+    Serial.println("MQTT: Não foi possivel enviar");
   }
-  return 1;
+  return sent;
 }
 
 int setupMqtt(char* mqtt_server, int mqtt_port)
@@ -72,29 +64,22 @@ int setupMqtt(char* mqtt_server, int mqtt_port)
   return 1;
 }
 
-int connectMqtt(char* mqtt_username, char* mqtt_password, char* mqtt_topic)
-{
-  Serial.print("MQTT broker: ");
-  while (!mqttClient.connected())
-  {
-    Serial.print("Attempting MQTT connection...");
-    String clientId = "ESP8266Client-"; // Create a random client ID
+void connectMqtt(char* mqtt_username, char* mqtt_password, char* mqtt_topic) {
+  if (!mqttClient.connected()) {
+    Serial.println("Desconectado");
+    Serial.print("MQTT: Tentando conexão...");
+    String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
-    // Attempt to connect
-    if (mqttClient.connect(clientId.c_str(), mqtt_username, mqtt_password))
-    {
-      Serial.println("connected");
-      mqttClient.subscribe(mqtt_topic); // subscribe the topics here
+    if (mqttClient.connect(clientId.c_str(), mqtt_username, mqtt_password)){
+      Serial.println("MQTT: Reconected");
+      mqttClient.subscribe(mqtt_topic);
+      return;
     }
-    else
-    {
-      Serial.print("failed, rc=");
-      Serial.print(mqttClient.state());
-      Serial.println(" try again in 5 seconds"); // Wait 5 seconds before retrying
-      delay(5000);
-    }
+    Serial.print("failed, rc=");
+    Serial.print(mqttClient.state());
+    return;
   }
-  return 1;
+  Serial.println("Conectado [" + String(mqtt_topic) + "]");
 }
 
 /* Ntp Client */

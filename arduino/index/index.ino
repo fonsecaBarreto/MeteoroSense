@@ -9,14 +9,17 @@
 #include "sensores.h"
 
 long startTime;
+
 // Pluviometro
 extern unsigned long lastPVLImpulseTime;
 extern unsigned int rainCounter;
+
 // Anemometro (Velocidade do vento)
 extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
 extern Sensors sensors;
+
 /******* Objeto de Transferência de Dados *******/
 struct
 {
@@ -29,7 +32,6 @@ struct
   int wind_dir = -1;
 } Data;
 
-
 String formatedDateString = "";
 char json_output[240]{0};
 char csv_header[200]{0};
@@ -38,24 +40,24 @@ char csv_output[200]{0};
 void setup()
 {
   Serial.begin(115200);
-  pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
   pinMode(PLV_PIN, INPUT_PULLDOWN);
-  attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
+  pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
+  attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
 
-  delay(2000);
+  delay(2600);
 
-  Serial.println("\n///////////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////////\n");
+  Serial.println("\n///////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////\n");
 
   loadConfiguration(SD, configFileName, config);
 
-  connectWifi(config.wifi_ssid, config.wifi_password);
+  setupWifi(config.wifi_ssid, config.wifi_password);
 
   setupMqtt(config.mqtt_server, config.mqtt_port);
 
-  connectNtp();
-
   setupSensors();
+
+  connectNtp();
 
   int now = millis();
   lastVVTImpulseTime = now;
@@ -65,22 +67,28 @@ void setup()
 
 void loop()
 {
-  // Update time stamp
+  // Update Timestamp
   timeClient.update();
   int timestamp = timeClient.getEpochTime();
   convertTimeToLocaleDate(timestamp);
+
   Serial.print("\n1. Iniciando nova interação (");
   Serial.println(String(formatedDateString) + "T" + String(timeClient.getFormattedTime())+ String(")"));
-
-  // Reconnect mqqtt if disconected
-  if (!mqttClient.connected()){
+  
+  // Establish internet connection
+  if (WiFi.status() != WL_CONNECTED){
+    Serial.println("Wifi: Desconectado");
+  } else  {
+    Serial.print("Wifi: Conectado ");
+    Serial.println("["+String(WiFi.localIP()) + "]");
+    Serial.print("MQTT: ");
     connectMqtt(config.mqtt_username, config.mqtt_password, config.mqtt_topic);
   }
 
   // Timeout
   while (millis() < startTime + config.interval)
-  {
-    mqttClient.loop();
+  { 
+    mqttClient.loop(); 
   };
   startTime = millis();
 
@@ -91,8 +99,9 @@ void loop()
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
   DHTRead(Data.humidity, Data.temperature);
   BMPRead(Data.pressure);
- 
+
   presentation(timestamp);
+  // 
   anemometerCounter = 0;
   rainCounter = 0;
   smallestDeltatime = 4294967295;
@@ -128,18 +137,19 @@ void presentation(long timestamp)
 
   Serial.print("menor: ");
   Serial.println(smallestDeltatime);
-  Serial.print("1/menor: ");
+  Serial.print("menor: ");
   Serial.println((3052.0f * ANEMOMETER_CIRC) / smallestDeltatime);
+
+  // local storage
+  Serial.println("\n3. Gravando em disco:");
+  storeMeasurement(formatedDateString, csv_header, csv_output);
 
   // mqqt
   parseData(timestamp);
-  Serial.println("\n3. Enviando Resultado:  \n");
-  sendMeasurementToMqtt(config.mqtt_topic, json_output);
-
-  // local storage
-  Serial.println("\n4. Gravando dados:  \n");
-  storeMeasurement(formatedDateString, csv_header,csv_output);
-  Serial.println("..........................................");
+  Serial.println("\n4. Enviando Resultado:  \n");
+  bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, json_output);
+  Serial.print("Foi enviado: ");
+  Serial.println(measurementSent);
 }
 
 void parseData(long timestamp)
@@ -175,13 +185,10 @@ void parseData(long timestamp)
 }
 
 
-void convertTimeToLocaleDate(long timestamp)
-{
-  // Calcula a data a partir do epoch time
+void convertTimeToLocaleDate(long timestamp) {
   struct tm *ptm = gmtime((time_t *)&timestamp);
   int day = ptm->tm_mday;
   int month = ptm->tm_mon + 1;
   int year = ptm->tm_year + 1900;
-  // Formata a data como "dd/mm/yyyy"
   formatedDateString = String(day) + "-" + String(month) + "-" + String(year);
 }
