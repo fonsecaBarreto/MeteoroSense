@@ -4,36 +4,43 @@
 #include <Wire.h>
 #include <Adafruit_BMP085.h>
 #include <cfloat>
+
 //Temperatura e Humidade
 DHT dht(DHTPIN, DHTTYPE);
+
 //Pressao
 Adafruit_BMP085 bmp;
 
 // Pluviometro
 unsigned long lastPVLImpulseTime = 0;
 unsigned int rainCounter = 0;
+
 // Anemometro (Velocidade do vento)
-unsigned long lastVVTImpulseTime = 0;
 float anemometerCounter = 0.0f;
+unsigned long lastVVTImpulseTime = 0;
 unsigned long smallestDeltatime=4294967295;
 
 Sensors sensors;
 
-void beginDHT()
-{
-dht.begin();
+void setupSensors(){
+  // Inciando DHT
+  Serial.println("Iniciando DHT");
+  dht.begin();
+
+  // Iniciando BMP
+  Serial.println('Iniciando BMP ');
+  beginBMP();
 }
 
 void beginBMP()
 {
-  bool bmp_Begin = bmp.begin();
-  sensors.bits.bmp=bmp_Begin;
-  if (!bmp_Begin) {
+  sensors.bits.bmp= bmp.begin();
+  if (!sensors.bits.bmp) {
     Serial.println("Could not find a valid BMP180 sensor, check wiring!");
-    
   }
-
 }
+
+// Controllers
 
 int getWindDir() {
   long long val, x, reading;
@@ -71,34 +78,26 @@ void pluviometerChange() {
 
 //Humidade, Temperatura
 void DHTRead(float& hum, float& temp) {
-  float humidity = dht.readHumidity();        // umidade relativa
-  float temperature = dht.readTemperature();  //  temperatura em graus Celsius
-
-  // Verifica se alguma leitura falhou
-  if (isnan(humidity) || isnan(temperature)) {
+  hum = dht.readHumidity();        // umidade relativa
+  temp = dht.readTemperature();  //  temperatura em graus Celsius
+  if (isnan(hum) || isnan(temp)){
     Serial.println("Falha ao ler o sensor DHT!");
-    falha = true;
-    hum = -1;
-    temp = -273.15;
-    return;
   }
-  else falha = false;
-  
-
-  hum = humidity;
-  temp = temperature;
 }
 
 //Pressao
 void BMPRead(float& press)
 {
-  // float temperature = bmp.readTemperature(); // isnan(temperature)
-  float pressure = bmp.readPressure() / 100.0; // Convert Pa to hPa
-  if (isnan(pressure)) 
-  {
-    Serial.println("Falha ao ler o sensor BMP180!");
-    press = -1;
-    return;
+  if(sensors.bits.bmp){
+    // float temperature = bmp.readTemperature(); // isnan(temperature)
+    float pressure = bmp.readPressure() / 100.0; // Convert Pa to hPa
+    if (isnan(pressure)) {
+      Serial.println("Falha ao ler o sensor BMP180!");
+      press = -1;
+      return;
+    }
+    press = pressure;
+  }else{
+    beginBMP();
   }
-  press = pressure;
 }
