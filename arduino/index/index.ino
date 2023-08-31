@@ -35,40 +35,27 @@ char json_output[240]{0};
 char csv_header[200]{0};
 char csv_output[200]{0};
 
-void parseData(long timestamp)
-{
-  const char *json_template = "{\"timestamp\": %i, \"temperatura\": %.2f, \"umidade_ar\": %.2f, \"velocidade_vento\": %.2f, \"rajada_vento\": %.2f, \"dir_vento\": %d, \"volume_chuva\": %.2f, \"pressao\": %.2f, \"uid\": \"%s\", \"identidade\": \"%s\"}";
-  sprintf(json_output, json_template, timestamp, Data.temperature, Data.humidity, Data.wind_speed, Data.wind_gust, Data.wind_dir, Data.rain_acc, Data.pressure, config.station_uid, config.station_name);
-
-  const char *csv_template = "%i,%.2f,%.2f,%.2f,%.2f,%d,%.2f,%.2f,%s,%s\n";
-  sprintf(csv_header, "%s\ntimestamp,temperatura,umidade_ar,velocidade_vento,rajada_vento,dir_vento,volume_chuva,pressao,uid,identidade\n", formatedDateString);
-  sprintf(csv_output, csv_template, timestamp, Data.temperature, Data.humidity, Data.wind_speed, Data.wind_gust, Data.wind_dir, Data.rain_acc, Data.pressure, config.station_uid, config.station_name);
-}
-
 void setup()
 {
   Serial.begin(115200);
-  sensors.ch = (char)255;
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
   pinMode(PLV_PIN, INPUT_PULLDOWN);
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
   attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
 
   delay(2000);
+
   Serial.println("\n///////////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////////\n");
 
-  // Libs
   loadConfiguration(SD, configFileName, config);
 
   connectWifi(config.wifi_ssid, config.wifi_password);
 
-  connectNtp();
-
   setupMqtt(config.mqtt_server, config.mqtt_port);
 
-  beginDHT();
+  connectNtp();
 
-  beginBMP();
+  setupSensors();
 
   int now = millis();
   lastVVTImpulseTime = now;
@@ -102,14 +89,9 @@ void loop()
   Data.wind_speed = 3.052 * (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0); // m/s
   Data.wind_gust = (3052.0f * ANEMOMETER_CIRC) / smallestDeltatime;
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
-
-  if (sensors.bits.dht)
-    DHTRead(Data.humidity, Data.temperature);
-  if (sensors.bits.bmp)
-    BMPRead(Data.pressure);
-  else
-    beginBMP();
-
+  DHTRead(Data.humidity, Data.temperature);
+  BMPRead(Data.pressure);
+ 
   presentation(timestamp);
   anemometerCounter = 0;
   rainCounter = 0;
@@ -148,15 +130,50 @@ void presentation(long timestamp)
   Serial.println(smallestDeltatime);
   Serial.print("1/menor: ");
   Serial.println((3052.0f * ANEMOMETER_CIRC) / smallestDeltatime);
+
   // mqqt
   parseData(timestamp);
   Serial.println("\n3. Enviando Resultado:  \n");
   sendMeasurementToMqtt(config.mqtt_topic, json_output);
 
+  // local storage
   Serial.println("\n4. Gravando dados:  \n");
   storeMeasurement(formatedDateString, csv_header,csv_output);
   Serial.println("..........................................");
 }
+
+void parseData(long timestamp)
+{
+  // parse measurements data to json
+  const char *json_template = "{\"timestamp\": %i, \"temperatura\": %s, \"umidade_ar\": %s, \"velocidade_vento\": %.2f, \"rajada_vento\": %.2f, \"dir_vento\": %d, \"volume_chuva\": %.2f, \"pressao\": %s, \"uid\": \"%s\", \"identidade\": \"%s\"}";
+  sprintf(json_output, json_template, 
+    timestamp, 
+    isnan(Data.temperature) ? "null" : String(Data.temperature), 
+    isnan(Data.humidity) ? "null" : String(Data.humidity), 
+    Data.wind_speed, 
+    Data.wind_gust, 
+    Data.wind_dir, 
+    Data.rain_acc, 
+    Data.pressure == -1 ? "null": String(Data.pressure), 
+    config.station_uid, 
+    config.station_name);
+
+  // parse measurement data to csv
+  const char *csv_template = "%i,%s,%s,%.2f,%.2f,%d,%.2f,%s,%s,%s\n";
+  sprintf(csv_header, "%s\ntimestamp,temperatura,umidade_ar,velocidade_vento,rajada_vento,dir_vento,volume_chuva,pressao,uid,identidade\n", formatedDateString);
+  sprintf(csv_output, csv_template, 
+    timestamp, 
+    isnan(Data.temperature) ? "null" : String(Data.temperature), 
+    isnan(Data.humidity) ? "null" : String(Data.humidity), 
+    Data.wind_speed,
+    Data.wind_gust,
+    Data.wind_dir,
+    Data.rain_acc, 
+    Data.pressure == -1 ? "null": String(Data.pressure), 
+    config.station_uid,
+    config.station_name);
+}
+
 
 void convertTimeToLocaleDate(long timestamp)
 {
