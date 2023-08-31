@@ -35,6 +35,7 @@ services:
     ports:
       - '38298:38298'
       - '9001:9001'
+      - '1884:1883'
     networks:
       - sit-development
 

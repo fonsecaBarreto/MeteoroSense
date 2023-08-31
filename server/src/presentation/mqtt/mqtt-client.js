@@ -1,12 +1,9 @@
 import mqtt from "mqtt";
 import { storeMeasurement } from "../../controllers/storeMeasurement.js";
 
-const protocol = 'mqtt'
-const host = 'telemetria.macae.ufrj.br:1883'
-const port = '1883'
 const clientId = `mqtt_${Math.random().toString(16).slice(3)}`
-const connectUrl = `${protocol}://${host}:${port}`
-const topic = "/prefeituras/macae/estacoes/est001";
+const connectUrl = process.env.MQTT_URL;
+const topic = process.env.MQTT_TOPIC;
 
 export function connectToMqtt() {
 
@@ -15,8 +12,8 @@ export function connectToMqtt() {
     clean: true,
     connectTimeout: 4000,
     reconnectPeriod: 1000,
-    username: 'telemetria',
-    password: 'kancvx8thz9FCN5jyq'
+    username: process.env.MQTT_USERNAME,
+    password: process.env.MQTT_PASSWORD
   });
 
   client.on("connect", () => {
