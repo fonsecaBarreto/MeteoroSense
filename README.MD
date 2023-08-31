@@ -1,4 +1,10 @@
-# Sistema Integrado de Gestão Meteorológica da UFRJ
+<div align="center">
+	<img src="docs/logo.png" alt="logo" widht="100%" height="auto">
+	<br/>
+	<br/>
+</div>
+# MeteoroSense
+## Sistema Embarcado para captação de dados meteorológicas
 
 Este repositório contém o código-fonte de um sistema integrado de gestão meteorológica para a Universidade Federal do Rio de Janeiro (UFRJ).
 
