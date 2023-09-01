@@ -79,10 +79,13 @@ void loop()
   if (WiFi.status() != WL_CONNECTED){
     Serial.println("Wifi: Desconectado");
   } else  {
-    Serial.print("Wifi: Conectado ");
-    Serial.println("["+String(WiFi.localIP()) + "]");
+    Serial.println("Wifi: Conectado ["+String(WiFi.localIP()) + "]");
     Serial.print("MQTT: ");
-    connectMqtt(config.mqtt_username, config.mqtt_password, config.mqtt_topic);
+    int isMqttConnected = connectMqtt(config.mqtt_username, config.mqtt_password, config.mqtt_topic);
+    if(isMqttConnected == 1){
+      Serial.println("Iniciando re-envio de metricas");
+      loopThroughFiles("/retries", 5, retyMeasurementCallback);
+    }
   }
 
   // Timeout
@@ -186,11 +189,28 @@ void parseData(long timestamp)
     config.station_name);
 }
 
-
 void convertTimeToLocaleDate(long timestamp) {
   struct tm *ptm = gmtime((time_t *)&timestamp);
   int day = ptm->tm_mday;
   int month = ptm->tm_mon + 1;
   int year = ptm->tm_year + 1900;
   formatedDateString = String(day) + "-" + String(month) + "-" + String(year);
+}
+
+void retyMeasurementCallback(char *fileName, char *payload)
+{
+  Serial.println("Trying to resend metrics: [" + String(fileName) + "]");
+  Serial.println(payload);
+  bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, json_output);
+  if(measurementSent == true){
+
+    // Retornar array com todos as metricas a serem removidas;
+
+    /* 
+      Serial.println("Enviado com sucesso!!!");
+      String filePath =  "/retries/" + String(fileName);
+      Serial.println("Arquivo a ser removido" + filePath);
+      removeFile(filePath.c_str()); 
+    */
+  }
 }

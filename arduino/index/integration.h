@@ -64,7 +64,7 @@ int setupMqtt(char* mqtt_server, int mqtt_port)
   return 1;
 }
 
-void connectMqtt(char* mqtt_username, char* mqtt_password, char* mqtt_topic) {
+int connectMqtt(char* mqtt_username, char* mqtt_password, char* mqtt_topic) {
   if (!mqttClient.connected()) {
     Serial.println("Desconectado");
     Serial.print("MQTT: Tentando conexão...");
@@ -73,13 +73,14 @@ void connectMqtt(char* mqtt_username, char* mqtt_password, char* mqtt_topic) {
     if (mqttClient.connect(clientId.c_str(), mqtt_username, mqtt_password)){
       Serial.println("MQTT: Reconected");
       mqttClient.subscribe(mqtt_topic);
-      return;
+      return 1;
     }
     Serial.print("failed, rc=");
     Serial.print(mqttClient.state());
-    return;
+    return 0;
   }
   Serial.println("Conectado [" + String(mqtt_topic) + "]");
+  return 1;
 }
 
 /* Ntp Client */
