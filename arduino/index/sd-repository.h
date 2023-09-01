@@ -105,7 +105,7 @@ void storeMeasurement(String directory, String fileName,const char *payload){
     }
   }
   Serial.println(" - Atualizando arquivo.");
-  appendFile(SD, path.c_str(), (String(payload) + "\n").c_str());
+  appendFile(SD, path.c_str(), payload);
 }
 
 /*   
@@ -114,3 +114,48 @@ if (!SD.exists(path.c_str())){
     appendFile(SD, path.c_str(), header);
   } 
 */
+
+String readFileContent(File file) {
+  String content = "";
+  while (file.available()) {
+    content += (char)file.read();
+  }
+  return content;
+}
+
+
+int removeFile(const char * filePath) {
+  Serial.println('Deltando aquivo: ' + filePath);
+  if (SD.remove(filePath)) {
+    Serial.println("' deleted.");
+    return 1;
+  } else {
+    Serial.print("Error deleting '");
+    return 0;
+  }
+}
+
+void loopThroughFiles(const char* dirName, int max, std::function<void(char*, char*)> callback ) {
+  File root = SD.open(dirName);
+
+  if (!root) {
+    Serial.println("Failed to open directory");
+    return;
+  }
+
+  while (true) {
+    File entry = root.openNextFile();
+    if (!entry || max == 0) break;
+
+    if (!entry.isDirectory()) {
+      Serial.print("File: ");
+      Serial.println(entry.name());
+      
+      String fileContent = readFileContent(entry);
+      callback((char *)entry.name(), (char *) fileContent.c_str());
+      max -=1;
+    }
+    entry.close();
+  }
+  root.close();
+}
