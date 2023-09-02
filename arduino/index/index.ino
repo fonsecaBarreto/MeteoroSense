@@ -7,7 +7,7 @@
 #include "sd-repository.h"
 #include "integration.h"
 #include "sensores.h"
-
+#include <stdio.h>
 long startTime;
 
 // Pluviometro
@@ -19,6 +19,10 @@ extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
 extern Sensors sensors;
+
+const int limit_retry = 10;
+int retry_array[limit_retry];
+int indexcoco=0;
 
 /******* Objeto de Transferência de Dados *******/
 struct
@@ -84,7 +88,9 @@ void loop()
     int isMqttConnected = connectMqtt(config.mqtt_username, config.mqtt_password, config.mqtt_topic);
     if(isMqttConnected == 1){
       Serial.println("Iniciando re-envio de metricas");
-      loopThroughFiles("/retries", 5, retyMeasurementCallback);
+      indexcoco=0;
+      loopThroughFiles("/retries", limit_retry, retryMeasurementCallback);
+      removeRetryMeasurement();
     }
   }
 
@@ -197,20 +203,22 @@ void convertTimeToLocaleDate(long timestamp) {
   formatedDateString = String(day) + "-" + String(month) + "-" + String(year);
 }
 
-void retyMeasurementCallback(char *fileName, char *payload)
-{
+void retryMeasurementCallback(char *fileName, char *payload) {
   Serial.println("Trying to resend metrics: [" + String(fileName) + "]");
   Serial.println(payload);
   bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, json_output);
-  if(measurementSent == true){
+  if(measurementSent == true) {
+    int x = 0;
+	  sscanf(fileName, " %d",&x);
+    retry_array[indexcoco]=x;
+    indexcoco++;//*/
+  }
+}
 
-    // Retornar array com todos as metricas a serem removidas;
-
-    /* 
-      Serial.println("Enviado com sucesso!!!");
-      String filePath =  "/retries/" + String(fileName);
-      Serial.println("Arquivo a ser removido" + filePath);
-      removeFile(filePath.c_str()); 
-    */
+void removeRetryMeasurement() {
+  for(int n= 0 ; n < limit_retry ; n ++ ){
+    int fileName = retry_array[n];
+    String filePath =  "/retries/" + String(fileName) + ".txt";
+    removeFile(filePath.c_str()); 
   }
 }
