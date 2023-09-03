@@ -125,7 +125,7 @@ String readFileContent(File file) {
 
 
 int removeFile(const char * filePath) {
-  Serial.println('Deltando aquivo: ' + filePath);
+  Serial.println(String("Deltando aquivo:") + filePath);
   if (SD.remove(filePath)) {
     Serial.println("' deleted.");
     return 1;

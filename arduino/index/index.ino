@@ -206,19 +206,22 @@ void convertTimeToLocaleDate(long timestamp) {
 void retryMeasurementCallback(char *fileName, char *payload) {
   Serial.println("Trying to resend metrics: [" + String(fileName) + "]");
   Serial.println(payload);
-  bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, json_output);
+  bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, payload);
   if(measurementSent == true) {
     int x = 0;
 	  sscanf(fileName, " %d",&x);
     retry_array[indexcoco]=x;
-    indexcoco++;//*/
+    indexcoco++;
   }
 }
 
 void removeRetryMeasurement() {
   for(int n= 0 ; n < limit_retry ; n ++ ){
-    int fileName = retry_array[n];
-    String filePath =  "/retries/" + String(fileName) + ".txt";
+    int timestamp = retry_array[n];
+    if(!timestamp) continue;
+    String filePath =  "/retries/" + String(timestamp) + ".txt";
+    Serial.println("Trying to remove retry file: [" + String(filePath) + "]");
     removeFile(filePath.c_str()); 
+    retry_array[n]=0;
   }
 }
