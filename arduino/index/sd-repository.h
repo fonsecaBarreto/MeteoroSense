@@ -73,67 +73,89 @@ void loadConfiguration(fs::FS &fs, const char *filename, Config &config)
   Serial.print("MQRR_PORT: ");
   Serial.println(config.mqtt_port);
 
+  Serial.print("READ_INTERVAL: ");
+  Serial.println(config.interval);
+
   Serial.println();
 }
 
 void appendFile(fs::FS &fs, const char * path, const char * message){
-    Serial.printf("Salvando nova metrica no cartao SD: %s\n", path); 
+    Serial.printf(" - Salvando dados no cartao SD: %s\n", path); 
 
     File file = fs.open(path, FILE_APPEND);
     if(!file){
-        Serial.println("Falha ao encontrar cartão SD");
+        Serial.println(" - Falha ao encontrar cartão SD");
         return;
     }
     if(file.print(message)){
-        Serial.println("Nova linha salva com sucesso.");
+        Serial.println(" - Nova linha salva com sucesso.");
     } else {
-        Serial.println("Falha ao salvar nova linha");
+        Serial.println(" - Falha ao salvar nova linha");
     }
     file.close();
 }
 
-void storeMeasurement( String fileName, const char* header,const char *payload){
-
-
-  String path = "/metricas/" + fileName + ".txt";
-    if (!SD.exists("/metricas")) {
-        if (SD.mkdir("/metricas")) {
-            Serial.println("Directory created successfully.");
-        } else {
-            Serial.println("Failed to create directory.");
-        }
+void storeMeasurement(String directory, String fileName,const char *payload){
+  String path = directory + "/" + fileName + ".txt";
+  if (!SD.exists(directory)) {
+    if (SD.mkdir(directory)) {
+      Serial.println(" - Diretorio criado com sucesso!");
+    } else {
+      Serial.println(" - Falha ao criar diretorio de metricas.");
     }
-
-   if (!SD.exists(path.c_str()))
-   {
-    Serial.println("Creating file");
-    appendFile(SD, path.c_str(), header);
-   }
-   else Serial.println("Creating found");
-  appendFile(SD,  path.c_str(), payload);
+  }
+  Serial.println(" - Atualizando arquivo.");
+  appendFile(SD, path.c_str(), payload);
 }
 
-
-/*if(first)
-  {
-    readLine(SD,"/dados.txt");
-    first = false;
-  }
+/*   
+if (!SD.exists(path.c_str())){
+    Serial.println(" - Criando novo arquivo.");
+    appendFile(SD, path.c_str(), header);
+  } 
 */
 
-/* void readLine(fs::FS &fs, const char * path){
-    Serial.printf("Reading file: %s\n", path);
-
-    File file = fs.open(path);
-    if(!file){
-        Serial.println("Failed to open file for reading");
-        return;
-    }
-
-    Serial.print("Read from file: ");
-    while(file.available()){
-         sendMeasurementToMqtt(config.mqtt_topic, file.readStringUntil('\n').c_str());
-    }
-    file.close();
+String readFileContent(File file) {
+  String content = "";
+  while (file.available()) {
+    content += (char)file.read();
+  }
+  return content;
 }
- */
+
+
+int removeFile(const char * filePath) {
+  Serial.println(String("Deltando aquivo:") + filePath);
+  if (SD.remove(filePath)) {
+    Serial.println("' deleted.");
+    return 1;
+  } else {
+    Serial.print("Error deleting '");
+    return 0;
+  }
+}
+
+void loopThroughFiles(const char* dirName, int max, std::function<void(char*, char*)> callback ) {
+  File root = SD.open(dirName);
+
+  if (!root) {
+    Serial.println("Failed to open directory");
+    return;
+  }
+
+  while (true) {
+    File entry = root.openNextFile();
+    if (!entry || max == 0) break;
+
+    if (!entry.isDirectory()) {
+      Serial.print("File: ");
+      Serial.println(entry.name());
+      
+      String fileContent = readFileContent(entry);
+      callback((char *)entry.name(), (char *) fileContent.c_str());
+      max -=1;
+    }
+    entry.close();
+  }
+  root.close();
+}
