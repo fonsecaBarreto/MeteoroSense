@@ -6,7 +6,7 @@
   "MQTT_SERVER": "192.168.0.173",
   "MQTT_USERNAME": "admin",
   "MQTT_PASSWORD": "123",
-  "MQTT_TOPIC": "",
+  "MQTT_TOPIC": "meu-topico",
   "MQTT_PORT": 1884,
   "INTERVAL": 10000
 }

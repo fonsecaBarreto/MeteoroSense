@@ -17,9 +17,9 @@ services:
       - ./server:/usr/src/app
       - /usr/src/app/node_modules
     env_file:
-      - ./server/config/.env
+      - ./server/.env
     ports:
-      - '3000:9000'
+      - '3000:3000'
     networks:
       - sit-development
     depends_on:
