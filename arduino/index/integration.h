@@ -33,6 +33,17 @@ int setupWifi(char* ssid, char*password)
   WiFi.setAutoReconnect(true);
   WiFi.persistent(true);
   // secureWifiClient.setCACert(root_ca);      // enable this line and the the "certificate" code for secure connection
+
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  
   return 1;
 }
 

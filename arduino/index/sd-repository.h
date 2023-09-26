@@ -68,8 +68,10 @@ void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename
   Serial.printf("MQTT_USERNAME: %s\n",config.mqtt_username);
   Serial.printf("MQTT_PASSWORD: %s\n", config.mqtt_password);
   Serial.printf("MQRR_TOPIC: %s\n", config.mqtt_topic);
-  Serial.printf("MQRR_PORT: %s\n", config.mqtt_port);
-  Serial.printf("READ_INTERVAL: %s\n\n", config.interval);
+  Serial.printf("MQRR_PORT: %d\n", config.mqtt_port);
+  Serial.printf("READ_INTERVAL: %d\n", config.interval);
+  Serial.println();
+  return;
 }
 
 void appendFile(fs::FS &fs, const char * path, const char * message){
