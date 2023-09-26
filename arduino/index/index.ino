@@ -43,18 +43,30 @@ char csv_output[200]{0};
 
 void setup()
 {
+  // 1. Arduino - Sistema Integrado de meteorologia
+  delay(3000);
   Serial.begin(115200);
+  Serial.println("\n///////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////\n");
+  Serial.println("1. Configuração inicial;");
+
+  // 1.1 Setup inicial dos pinos;
+  Serial.println("  - Iniciando pinos");
   pinMode(PLV_PIN, INPUT_PULLDOWN);
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
 
-  delay(2600);
+  // 1.2 Configuração Inicial;
+  delay(2000);
+  Serial.println("\n1.2 Carregando variaveis;");
+  loadConfiguration("  - Carregando variaveis", SD, configFileName, config);
 
-  Serial.println("\n///////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////\n");
+  // 1.3 Inicio das integrações dos serviços externos;
+  delay(2000);
+  Serial.println("1.3 Integrações externas;");
 
-  loadConfiguration(SD, configFileName, config);
-
+  // 1.3.1 Estabelecendo conexão com wifi;
+  Serial.println("1.3.1 Estabelecendo conexão inicial com wifi\n");
   setupWifi(config.wifi_ssid, config.wifi_password);
 
   setupMqtt(config.mqtt_server, config.mqtt_port);
@@ -66,7 +78,7 @@ void setup()
   int now = millis();
   lastVVTImpulseTime = now;
   lastPVLImpulseTime = now;
-  startTime = now;
+  startTime = now; 
 }
 
 void loop()
