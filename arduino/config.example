@@ -1,0 +1,12 @@
+{
+  "STATION_UID": "02",
+  "STATION_NAME": "est002",
+  "WIFI_SSID": "Lucas",
+  "WIFI_PASSWORD": "2014072276",
+  "MQTT_SERVER": "192.168.0.173",
+  "MQTT_USERNAME": "admin",
+  "MQTT_PASSWORD": "123",
+  "MQTT_TOPIC": "",
+  "MQTT_PORT": 1884,
+  "INTERVAL": 10000
+}
