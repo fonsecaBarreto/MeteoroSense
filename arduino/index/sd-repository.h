@@ -11,72 +11,65 @@ const int mosiPin = 23;
 const int misoPin = 27;
 const int clockPin = 25;
 
+const int RETRY_INTERVAL = 5000;
 
-void loadConfiguration(fs::FS &fs, const char *filename, Config &config)
+void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename, Config &config)
 {
-
-  Serial.printf("Carregando Arquivo de configuração... %s\n", filename);
+  Serial.printf("%s: Carregando variáveis de ambiente \n", contextName);
 
   StaticJsonDocument<512> doc;
   SPI.begin(clockPin, misoPin, mosiPin);
 
-  if (SD.begin(chipSelectPin, SPI)) {
-   
-    File file = fs.open(filename);
-    if (!file) Serial.println("Não foi possivel encontrar arquivo de configuração");
+  int attemptCount = 0;
+  bool success = false;
+  while (success == false) {
 
-    DeserializationError error = deserializeJson(doc, file);
-    if (error){
-      Serial.println(F("** Formato do arquivo de configuração inválido **"));
-      Serial.println(error.c_str());
+    Serial.printf("%s: Iniciando leitura do arquivo de configuração %s (tentativa: %d) \n", contextName, filename, attemptCount + 1);
+
+    if (SD.begin(chipSelectPin, SPI)){
+      File file = fs.open(filename);
+
+      if (file){
+        DeserializationError error = deserializeJson(doc, file);
+        if (!error){
+          strlcpy(config.station_uid, doc["STATION_UID"] | "", sizeof(config.station_uid));
+          strlcpy(config.station_name, doc["STATION_NAME"] | "", sizeof(config.station_name));
+          strlcpy(config.wifi_ssid, doc["WIFI_SSID"] | "", sizeof(config.wifi_ssid));
+          strlcpy(config.wifi_password, doc["WIFI_PASSWORD"] | "", sizeof(config.wifi_password));
+          strlcpy(config.mqtt_server, doc["MQTT_SERVER"] | "", sizeof(config.mqtt_server));
+          strlcpy(config.mqtt_username, doc["MQTT_USERNAME"] | "", sizeof(config.mqtt_username));
+          strlcpy(config.mqtt_password, doc["MQTT_PASSWORD"] | "", sizeof(config.mqtt_password));
+          strlcpy(config.mqtt_topic, doc["MQTT_TOPIC"] | "", sizeof(config.mqtt_topic));
+          config.mqtt_port = doc["MQTT_PORT"] | 1883;
+          config.interval = doc["INTERVAL"] | 60000;
+          file.close();
+          success = true;
+          continue;
+        }
+        Serial.printf("%s: [ ERROR ] Formato inválido (JSON)\n", contextName);
+        Serial.println(error.c_str());
+      }
+      Serial.printf("%s: [ ERROR ] Arquivo de configuração não encontrado\n", contextName);
+    } else {
+      Serial.printf("%s: [ ERROR ] Cartão SD não encontrado.\n", contextName);
     }
-    file.close();
-  } else {
-    Serial.println(" ** Não foi possivel estabelecer conexão com leitor de Cartão SD. **\n");
+
+    Serial.printf("%s: Proxima tentativa de re-leitura em %d segundos ... \n\n\n", contextName, (RETRY_INTERVAL / 1000));
+    attemptCount++;
+    delay(RETRY_INTERVAL);
   }
- 
-  strlcpy(config.station_uid, doc["STATION_UID"] | "01", sizeof(config.station_uid));
-  strlcpy(config.station_name, doc["STATION_NAME"] | "est001", sizeof(config.station_name));
-  strlcpy(config.wifi_ssid, doc["WIFI_SSID"] | "wifi", sizeof(config.wifi_ssid));
-  strlcpy(config.wifi_password, doc["WIFI_PASSWORD"] | "wifi_password", sizeof(config.wifi_password));
-  strlcpy(config.mqtt_server, doc["MQTT_SERVER"] | "localhost:3000", sizeof(config.mqtt_server));
-  strlcpy(config.mqtt_username, doc["MQTT_USERNAME"] | "telemetria", sizeof(config.mqtt_username));
-  strlcpy(config.mqtt_password, doc["MQTT_PASSWORD"] | "telemetria_password", sizeof(config.mqtt_password));
-  strlcpy(config.mqtt_topic, doc["MQTT_TOPIC"] | "/fake_topic", sizeof(config.mqtt_topic));
-  config.mqtt_port = doc["MQTT_PORT"] | 1883;
-  config.interval = doc["INTERVAL"] | 60000;
 
-  Serial.print("STATION_UID: ");
-  Serial.println(config.station_uid);
-
-  Serial.print("STATION_NAME: ");
-  Serial.println(config.station_name);
-
-  Serial.print("WIFI_SSID: ");
-  Serial.println(config.wifi_ssid);
-
-  Serial.print("WIFI_PASSWORD: ");
-  Serial.println(config.wifi_password);
-
-  Serial.print("MQTT_SERVER: ");
-  Serial.println(config.mqtt_server);
-
-  Serial.print("MQTT_USERNAME: ");
-  Serial.println(config.mqtt_username);
-
-  Serial.print("MQTT_PASSWORD: ");
-  Serial.println(config.mqtt_password);
-
-  Serial.print("MQRR_TOPIC: ");
-  Serial.println(config.mqtt_topic);
-
-  Serial.print("MQRR_PORT: ");
-  Serial.println(config.mqtt_port);
-
-  Serial.print("READ_INTERVAL: ");
-  Serial.println(config.interval);
-
-  Serial.println();
+  Serial.printf("%s: Variáveis de ambiente carregadas com sucesso!\n\n", contextName);
+  Serial.printf("STATION_UID: %s\n", config.station_uid);
+  Serial.printf("STATION_NAME: %s\n", config.station_name);
+  Serial.printf("WIFI_SSID: %s\n", config.wifi_ssid);
+  Serial.printf("WIFI_PASSWORD: %s\n", config.wifi_password);
+  Serial.printf("MQTT_SERVER: %s\n", config.mqtt_server);
+  Serial.printf("MQTT_USERNAME: %s\n",config.mqtt_username);
+  Serial.printf("MQTT_PASSWORD: %s\n", config.mqtt_password);
+  Serial.printf("MQRR_TOPIC: %s\n", config.mqtt_topic);
+  Serial.printf("MQRR_PORT: %s\n", config.mqtt_port);
+  Serial.printf("READ_INTERVAL: %s\n\n", config.interval);
 }
 
 void appendFile(fs::FS &fs, const char * path, const char * message){
