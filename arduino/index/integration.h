@@ -100,5 +100,10 @@ int connectNtp()
   Serial.println("NTP connection : Tentando conectar....");
   timeClient.begin();
   Serial.println("NTP connection : Conectado com sucesso.");
+
+  while(!timeClient.update()) {
+    Serial.printf("Nao foi possivel atualizar o NTP. Conectando novamente em 5 segundos");
+    delay(5000);
+  }
   return 1;
 }
