@@ -8,6 +8,7 @@
 #include "integration.h"
 #include "sensores.h"
 #include <stdio.h>
+#include "esp_system.h"
 long startTime;
 
 // Pluviometro
@@ -22,7 +23,7 @@ extern Sensors sensors;
 
 const int limit_retry = 10;
 int retry_array[limit_retry];
-int indexcoco=0;
+int indexResent=0;
 
 /******* Objeto de Transferência de Dados *******/
 struct
@@ -41,37 +42,56 @@ char json_output[240]{0};
 char csv_header[200]{0};
 char csv_output[200]{0};
 
+
+
 void setup()
 {
+  // 1. Arduino - Sistema Integrado de meteorologia
+  delay(3000);
   Serial.begin(115200);
+  Serial.println("\n///////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////\n");
+  Serial.println("1. Configuração inicial;");
+
+  // 1.1 Setup inicial dos pinos;
+  Serial.println("  - Iniciando pinos");
   pinMode(PLV_PIN, INPUT_PULLDOWN);
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
+  
+  // 1.2 Configuração Inicial;
+  delay(2000);
+  Serial.println("\n1.2 Carregando variaveis;");
+  loadConfiguration("  - Carregando variaveis", SD, configFileName, config);
 
-  delay(2600);
+  // 1.3 Inicio das integrações dos serviços externos;
+  delay(2000);
+  Serial.println("1.3 Integrações externas;");
 
-  Serial.println("\n///////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////\n");
-
-  loadConfiguration(SD, configFileName, config);
-
+  // 1.3.1 Estabelecendo conexão com wifi;
+  Serial.println("1.3.1 Estabelecendo conexão inicial com wifi\n");
   setupWifi(config.wifi_ssid, config.wifi_password);
 
+  // 1.3.2 Estabelecendo conexão com NTP;
+  Serial.println("1.3.2 Estabelecendo conexão com NTP;\n");
+  connectNtp();
+
+  // 1.3.3 Configuração incial MQTT broker;
+  Serial.println("1.3.3 Configuração incial MQTT broker\n");
   setupMqtt(config.mqtt_server, config.mqtt_port);
 
+  // 1.3.4 Iniciando controllers de sensores;
+  Serial.println("1.3.4 Iniciando controllers de sensores;/n");
   setupSensors();
-
-  connectNtp();
 
   int now = millis();
   lastVVTImpulseTime = now;
   lastPVLImpulseTime = now;
-  startTime = now;
+  startTime = now; 
 }
 
 void loop()
 {
-  // Update Timestamp
   timeClient.update();
   int timestamp = timeClient.getEpochTime();
   convertTimeToLocaleDate(timestamp);
@@ -88,7 +108,7 @@ void loop()
     int isMqttConnected = connectMqtt(config.mqtt_username, config.mqtt_password, config.mqtt_topic);
     if(isMqttConnected == 1){
       Serial.println("Iniciando re-envio de metricas");
-      indexcoco=0;
+      indexResent=0;
       loopThroughFiles("/retries", limit_retry, retryMeasurementCallback);
       removeRetryMeasurement();
     }
@@ -208,10 +228,10 @@ void retryMeasurementCallback(char *fileName, char *payload) {
   Serial.println(payload);
   bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, payload);
   if(measurementSent == true) {
-    int x = 0;
-	  sscanf(fileName, " %d",&x);
-    retry_array[indexcoco]=x;
-    indexcoco++;
+    int nomeTimeStamp = 0;
+	  sscanf(fileName, " %d",&nomeTimeStamp);
+    retry_array[indexResent]=nomeTimeStamp;
+    indexResent++;
   }
 }
 

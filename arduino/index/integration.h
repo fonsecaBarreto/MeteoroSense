@@ -33,6 +33,17 @@ int setupWifi(char* ssid, char*password)
   WiFi.setAutoReconnect(true);
   WiFi.persistent(true);
   // secureWifiClient.setCACert(root_ca);      // enable this line and the the "certificate" code for secure connection
+
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  
   return 1;
 }
 
@@ -89,5 +100,10 @@ int connectNtp()
   Serial.println("NTP connection : Tentando conectar....");
   timeClient.begin();
   Serial.println("NTP connection : Conectado com sucesso.");
+
+  while(!timeClient.update()) {
+    Serial.printf("Nao foi possivel atualizar o NTP. Conectando novamente em 5 segundos");
+    delay(5000);
+  }
   return 1;
 }
