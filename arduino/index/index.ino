@@ -123,14 +123,14 @@ void loop()
 
   // Controllers
   Data.wind_dir = getWindDir();
-  Data.wind_speed = 3.052 * (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0); // m/s
+  Data.wind_speed = 3.052 * (ANEMOMETER_CIRC * anemometerCounter) / (config.interval / 1000.0); // m/s
   Data.wind_gust = (3052.0f * ANEMOMETER_CIRC) / smallestDeltatime;
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
   DHTRead(Data.humidity, Data.temperature);
   BMPRead(Data.pressure);
 
   presentation(timestamp);
-  // 
+  //
   anemometerCounter = 0;
   rainCounter = 0;
   smallestDeltatime = 4294967295;
