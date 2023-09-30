@@ -60,16 +60,16 @@ void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename
   }
 
   Serial.printf("%s: Variáveis de ambiente carregadas com sucesso!\n\n", contextName);
-  Serial.printf("STATION_UID: %s\n", config.station_uid);
-  Serial.printf("STATION_NAME: %s\n", config.station_name);
-  Serial.printf("WIFI_SSID: %s\n", config.wifi_ssid);
-  Serial.printf("WIFI_PASSWORD: %s\n", config.wifi_password);
-  Serial.printf("MQTT_SERVER: %s\n", config.mqtt_server);
-  Serial.printf("MQTT_USERNAME: %s\n",config.mqtt_username);
-  Serial.printf("MQTT_PASSWORD: %s\n", config.mqtt_password);
-  Serial.printf("MQRR_TOPIC: %s\n", config.mqtt_topic);
-  Serial.printf("MQRR_PORT: %d\n", config.mqtt_port);
-  Serial.printf("READ_INTERVAL: %d\n", config.interval);
+  Serial.printf("   STATION_UID: %s\n", config.station_uid);
+  Serial.printf("   STATION_NAME: %s\n", config.station_name);
+  Serial.printf("   WIFI_SSID: %s\n", config.wifi_ssid);
+  Serial.printf("   WIFI_PASSWORD: %s\n", config.wifi_password);
+  Serial.printf("   MQTT_SERVER: %s\n", config.mqtt_server);
+  Serial.printf("   MQTT_USERNAME: %s\n",config.mqtt_username);
+  Serial.printf("   MQTT_PASSWORD: %s\n", config.mqtt_password);
+  Serial.printf("   MQRR_TOPIC: %s\n", config.mqtt_topic);
+  Serial.printf("   MQRR_PORT: %d\n", config.mqtt_port);
+  Serial.printf("   READ_INTERVAL: %d\n", config.interval);
   Serial.println();
   return;
 }
