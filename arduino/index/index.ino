@@ -3,12 +3,32 @@
 //.........................................................................................................................
 
 #include "constants.h"
-#include "conf.h"
-#include "sd-repository.h"
 #include "integration.h"
 #include "sensores.h"
 #include <stdio.h>
 #include "esp_system.h"
+
+//
+
+/******* Configuração de ambiente *******/
+
+struct Config {
+  char station_uid[64];
+  char station_name[64];
+  char wifi_ssid[64];
+  char wifi_password[64];
+  char mqtt_server[64]; 
+  char mqtt_username[64]; 
+  char mqtt_password[64]; 
+  char mqtt_topic[64]; 
+  int mqtt_port;
+  int interval;
+} ;
+
+struct Config config{ "02","est002","Lucas","2014072276","192.168.0.173","admin","123","meu-topico",1884,10000};
+
+
+//
 long startTime;
 
 // Pluviometro
@@ -58,11 +78,6 @@ void setup()
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
-  
-  // 1.2 Configuração Inicial;
-  delay(2000);
-  Serial.println("\n1.2 Carregando variaveis;");
-  loadConfiguration("  - Carregando variaveis", SD, configFileName, config);
 
   // 1.3 Inicio das integrações dos serviços externos;
   delay(2000);
@@ -106,12 +121,6 @@ void loop()
     Serial.println("Wifi: Conectado ["+String(WiFi.localIP()) + "]");
     Serial.print("MQTT: ");
     int isMqttConnected = connectMqtt(config.mqtt_username, config.mqtt_password, config.mqtt_topic);
-    if(isMqttConnected == 1){
-      Serial.println("Iniciando re-envio de metricas");
-      indexResent=0;
-      loopThroughFiles("/retries", limit_retry, retryMeasurementCallback);
-      removeRetryMeasurement();
-    }
   }
 
   // Timeout
@@ -169,17 +178,12 @@ void presentation(long timestamp)
   Serial.print("menor: ");
   Serial.println((3052.0f * ANEMOMETER_CIRC) / smallestDeltatime);
 
-  // local storage
-  Serial.println("\n3. Gravando em disco:");
-  storeMeasurement("/metricas", formatedDateString, csv_output);
-
   // mqqt
   parseData(timestamp);
   Serial.println("\n4. Enviando Resultado:  \n");
   bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, json_output);
   if(measurementSent == false){
-    Serial.print('4.2 Salvando Dados para serem enviados posteriorment');
-    storeMeasurement("/retries", String(timestamp), json_output);
+    Serial.print('4.2 Não foi possivel enviar');
   }
 }
 
@@ -221,27 +225,4 @@ void convertTimeToLocaleDate(long timestamp) {
   int month = ptm->tm_mon + 1;
   int year = ptm->tm_year + 1900;
   formatedDateString = String(day) + "-" + String(month) + "-" + String(year);
-}
-
-void retryMeasurementCallback(char *fileName, char *payload) {
-  Serial.println("Trying to resend metrics: [" + String(fileName) + "]");
-  Serial.println(payload);
-  bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, payload);
-  if(measurementSent == true) {
-    int nomeTimeStamp = 0;
-	  sscanf(fileName, " %d",&nomeTimeStamp);
-    retry_array[indexResent]=nomeTimeStamp;
-    indexResent++;
-  }
-}
-
-void removeRetryMeasurement() {
-  for(int n= 0 ; n < limit_retry ; n ++ ){
-    int timestamp = retry_array[n];
-    if(!timestamp) continue;
-    String filePath =  "/retries/" + String(timestamp) + ".txt";
-    Serial.println("Trying to remove retry file: [" + String(filePath) + "]");
-    removeFile(filePath.c_str()); 
-    retry_array[n]=0;
-  }
 }
