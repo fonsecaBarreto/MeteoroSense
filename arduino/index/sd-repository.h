@@ -103,13 +103,6 @@ void storeMeasurement(String directory, String fileName,const char *payload){
   appendFile(SD, path.c_str(), payload);
 }
 
-/*   
-if (!SD.exists(path.c_str())){
-    Serial.println(" - Criando novo arquivo.");
-    appendFile(SD, path.c_str(), header);
-  } 
-*/
-
 String readFileContent(File file) {
   String content = "";
   while (file.available()) {
@@ -118,14 +111,12 @@ String readFileContent(File file) {
   return content;
 }
 
-
 int removeFile(const char * filePath) {
-  Serial.println(String("Deltando aquivo:") + filePath);
   if (SD.remove(filePath)) {
-    Serial.println("' deleted.");
+    Serial.println("    Deletado com sucesso.");
     return 1;
   } else {
-    Serial.print("Error deleting '");
+    Serial.print("    Erro ao deletar.");
     return 0;
   }
 }
@@ -143,9 +134,6 @@ void loopThroughFiles(const char* dirName, int max, std::function<void(char*, ch
     if (!entry || max == 0) break;
 
     if (!entry.isDirectory()) {
-      Serial.print("File: ");
-      Serial.println(entry.name());
-      
       String fileContent = readFileContent(entry);
       callback((char *)entry.name(), (char *) fileContent.c_str());
       max -=1;
@@ -154,3 +142,41 @@ void loopThroughFiles(const char* dirName, int max, std::function<void(char*, ch
   }
   root.close();
 }
+
+
+int countDirectoryFiles(const char* dirName) {
+  File root = SD.open(dirName);
+  
+  if (!root) {
+    Serial.println("Failed to open directory");
+    return 0;
+  }
+
+  int fileCount = 0;
+  while (true) {
+    File entry =  root.openNextFile();
+    if (! entry) {
+      break;
+    }
+    if (entry.isDirectory()) {
+      continue;
+    }
+    fileCount++;
+    entry.close();
+  }
+
+  root.close();
+
+  return fileCount;
+}
+
+
+
+
+
+/*   
+if (!SD.exists(path.c_str())){
+    Serial.println(" - Criando novo arquivo.");
+    appendFile(SD, path.c_str(), header);
+  } 
+*/
