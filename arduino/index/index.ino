@@ -1,6 +1,6 @@
 // Autor: Lucas Fonseca e Gabriel Fonseca
 // Titulo: Sit arduino
-// Versão: 1.5;
+// Versão: 1.5.1;
 //.........................................................................................................................
 
 #include "constants.h"
@@ -50,17 +50,23 @@ void setup()
   Serial.begin(115200);
   Serial.println("\n///////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////\n");
   Serial.println("1. Configuração inicial;");
-
-  // 1.1 Setup inicial dos pinos;
-  Serial.println("  - Iniciando pinos");
   pinMode(PLV_PIN, INPUT_PULLDOWN);
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
 
-  // 1.2 Configuração Inicial;
+  // 1.1 Criando diretorios padrões
+  Serial.printf("\n1.1 Iniciando cartão SD");
+  initSdCard();
+
+  // 1.2 Criando diretorios padrões
+  Serial.printf("\n\n1.2 Criando diretorios padrões");
+  createDirectory("/metricas");
+  createDirectory("/logs");
+
+  // 1.3 Configuração Inicial;
   delay(2000);
-  Serial.println("\n1.2 Carregando variaveis;");
+  Serial.println("\n1.3 Carregando variaveis;");
   loadConfiguration("  - Carregando variaveis", SD, configFileName, config);
 
   // 1.3 Estabelecendo conexão com wifi;
@@ -111,21 +117,17 @@ void loop()
     if (timeRemaining % 10000 == 0 ){
       Serial.printf("\n\n * Coletando dados, proximo resultado em %d segundos...", (timeRemaining / 1000));
       Serial.printf("\n  - WIFI: %s", isWifiConnected ? "Contectado" : "Desconectado");
-      Serial.printf("\n  - MQTT: %s", isMqttConnected == true ? "Contectado" : "Desconectado");
+      Serial.printf("\n  - MQTT: %s\n", isMqttConnected == true ? "Contectado" : "Desconectado");
 
-      int totalRetries = countDirectoryFiles("/retries");
-      Serial.printf("\n  - Total metricas atrasadas: %d", totalRetries);
-
-      if (!isMqttConnected) {
-        isMqttConnected = connectMqtt("\n  - MQTT", config.mqtt_username, config.mqtt_password, config.mqtt_topic);
-      } else if(totalRetries > 0){
-          Serial.printf("\n  - MQTT: Realizando re-envio de metricas atrasadas (%d/%d)\n", limit_retry, totalRetries);
-          indexResent = 0;
-          loopThroughFiles("/retries", limit_retry, retryMeasurementCallback);
-          Serial.println();
-          removeRetryMeasurement();
+      if(isWifiConnected){
+        int nivelDbm =( WiFi.RSSI()) * -1;
+        Serial.println(nivelDbm);
       }
 
+      if (!isMqttConnected){
+        isMqttConnected = connectMqtt("\n  - MQTT", config.mqtt_username, config.mqtt_password, config.mqtt_topic);
+      }
+      
       while(now >= millis());
     }
     return;
@@ -162,7 +164,6 @@ void loop()
 
 }
 
-
 void presentation(long timestamp) {
   // Resultado das medições
   Serial.println("\nResultado:");
@@ -186,13 +187,8 @@ void presentation(long timestamp) {
 
   // Enviando Dados Remotamente
   Serial.println("\n4.2 Enviando Resultados remotamente:  ");
-  bool  measurementSent = sendMeasurementToMqtt(config.mqtt_topic, json_output);
+  bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, json_output);
 
-  // Arquivando dados com falha
-  if (measurementSent == false){
-    Serial.printf("\n4.3 Arquivando Dados para serem re-enviados posteriomente");
-    storeMeasurement("/retries", String(timestamp), json_output);
-  }
 }
 
 void parseData(long timestamp)
@@ -233,29 +229,4 @@ void convertTimeToLocaleDate(long timestamp) {
   int month = ptm->tm_mon + 1;
   int year = ptm->tm_year + 1900;
   formatedDateString = String(day) + "-" + String(month) + "-" + String(year);
-}
-
-void retryMeasurementCallback(char *fileName, char *payload) {
-  Serial.println("    Reenviando arquivo: [" + String(fileName) + "]");
-  bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, payload);
-  if (measurementSent == true) {
-    int nomeTimeStamp = 0;
-    sscanf(fileName, " %d", &nomeTimeStamp);
-    retry_array[indexResent] = nomeTimeStamp;
-    indexResent++;
-  }
-}
-
-void removeRetryMeasurement() {
-  for (int n = 0; n < limit_retry; n++){
-    int timestamp = retry_array[n];
-    if (!timestamp){
-      continue;
-    
-}
-    String filePath = "/retries/" + String(timestamp) + ".txt";
-    Serial.println("    Removendo arquivos: [" + String(filePath) + "]");
-    removeFile(filePath.c_str());
-    retry_array[n] = 0;
-  }
 }
