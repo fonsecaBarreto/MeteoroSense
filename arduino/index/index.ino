@@ -55,7 +55,7 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
 
-  // 1.1 Criando diretorios padrões
+  // 1.1 Iniciando Cartão SD
   Serial.printf("\n1.1 Iniciando cartão SD");
   initSdCard();
 
@@ -110,7 +110,8 @@ void setup()
 
   int timestamp = timeClient.getEpochTime();
   convertTimeToLocaleDate(timestamp);
-  storeLog(("\n" + formatedDateString + "\n").c_str());
+  String dataHora = String(formatedDateString) + "T" + timeClient.getFormattedTime();
+  storeLog(("\n" + dataHora + "\n").c_str());
 }
 
 void loop()
@@ -131,13 +132,13 @@ void loop()
     if (timeRemaining % 10000 == 0 ){
       Serial.printf("\n\n * Coletando dados, proximo resultado em %d segundos...", (timeRemaining / 1000));
       Serial.printf("\n  - WIFI: %s", isWifiConnected ? "Contectado" : "Desconectado");
-      Serial.printf("\n  - MQTT: %s\n", isMqttConnected == true ? "Contectado" : "Desconectado");
-
+  
       if(isWifiConnected){
         int nivelDbm =( WiFi.RSSI()) * -1;
-        Serial.println(nivelDbm);
+        Serial.printf("\n  - WIFI: (%d)", nivelDbm);
       }
 
+      Serial.printf("\n  - MQTT: %s\n", isMqttConnected == true ? "Contectado" : "Desconectado");
       if (!isMqttConnected){
         isMqttConnected = connectMqtt("\n  - MQTT", config.mqtt_username, config.mqtt_password, config.mqtt_topic);
       }
