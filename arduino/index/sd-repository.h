@@ -131,7 +131,6 @@ void storeMeasurement(String directory, String fileName, const char *payload){
 
 // Adicion uma nova linha de metricas
 void storeLog(const char *payload){
-  Serial.printf("\n%s", payload);
   String path = "/logs/boot.txt";
   File file = SD.open(path, FILE_APPEND);
   if (file) { file.print(payload); }
