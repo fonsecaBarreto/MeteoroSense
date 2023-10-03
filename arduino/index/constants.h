@@ -19,8 +19,6 @@
 
 //Biruta
 #define NUMDIRS 8
-//inline int adc[NUMDIRS] = {480,600,800,1150,1820,250,305,380};
-//inline char* strVals[NUMDIRS] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW" };
 inline int adc[NUMDIRS] = {800, 600, 515, 420, 350, 295, 1900, 1200};
 inline char* strVals[NUMDIRS] = {"E", "NE", "N", "NW", "W", "SW", "S", "SE"};
 inline char dirOffset = 0;

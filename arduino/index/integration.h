@@ -48,13 +48,13 @@ int setupWifi(const char *contextName, char* ssid, char*password)
 
 /***** MQTT ****/
 
-void callback(char *topic, byte *payload, unsigned int length)
+/* void callback(char *topic, byte *payload, unsigned int length)
 {
-/*   String incommingMessage = "";
+  String incommingMessage = "";
   for (int i = 0; i < length; i++)
     incommingMessage += (char)payload[i];
-  Serial.println("MQTT broker: Recebimento confirmado [" + String(topic) + "]" + incommingMessage); */
-}
+  Serial.println("MQTT broker: Recebimento confirmado [" + String(topic) + "]" + incommingMessage);
+} */
 
 bool sendMeasurementToMqtt(char *topic, const char *payload)
 {
@@ -89,7 +89,7 @@ bool setupMqtt(const char *contextName, char* mqtt_server, int mqtt_port, char* 
 {
   Serial.printf("%s: Estabelecendo conexão inicial\n", contextName);
   mqttClient.setServer(mqtt_server, mqtt_port);
-  mqttClient.setCallback(callback);
+  // mqttClient.setCallback(callback);
   return connectMqtt(contextName, mqtt_username, mqtt_password, mqtt_topic);
 }
 
