@@ -13,9 +13,34 @@ const int clockPin = 25;
 
 const int RETRY_INTERVAL = 5000;
 
+// Inicia leitura cartão SD
+void initSdCard(){
+  SPI.begin(clockPin, misoPin, mosiPin);
+  while(!SD.begin(chipSelectPin, SPI)) {
+    Serial.printf("\n  - Cartão não encontrado. tentando novamente em %d segundos ...", 2);
+    delay(2000);
+  }
+  Serial.printf("\n  - Leitor de Cartão iniciado com sucesso!.");
+}
+
+// Adicionar novo diretorio
+void createDirectory(const char * directory){
+  Serial.printf("\n  - Tentando Criando novo diretorio: %s.", directory);
+  if (!SD.exists(directory)) {
+    if (SD.mkdir(directory)) {
+      Serial.printf("\n     - Diretorio criado com sucesso!");
+    } else {
+      Serial.printf("\n     - Falha ao criar diretorio.");
+    }
+    return;
+  }
+  Serial.printf("\n     - Diretorio já existe.");
+}
+
+// Carrega arquivo de configuração inicial
 void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename, Config &config)
 {
-  Serial.printf("%s: Carregando variáveis de ambiente \n", contextName);
+  Serial.printf("\n%s: Carregando variáveis de ambiente \n", contextName);
 
   StaticJsonDocument<512> doc;
   SPI.begin(clockPin, misoPin, mosiPin);
@@ -60,16 +85,16 @@ void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename
   }
 
   Serial.printf("%s: Variáveis de ambiente carregadas com sucesso!\n\n", contextName);
-  Serial.printf("STATION_UID: %s\n", config.station_uid);
-  Serial.printf("STATION_NAME: %s\n", config.station_name);
-  Serial.printf("WIFI_SSID: %s\n", config.wifi_ssid);
-  Serial.printf("WIFI_PASSWORD: %s\n", config.wifi_password);
-  Serial.printf("MQTT_SERVER: %s\n", config.mqtt_server);
-  Serial.printf("MQTT_USERNAME: %s\n",config.mqtt_username);
-  Serial.printf("MQTT_PASSWORD: %s\n", config.mqtt_password);
-  Serial.printf("MQRR_TOPIC: %s\n", config.mqtt_topic);
-  Serial.printf("MQRR_PORT: %d\n", config.mqtt_port);
-  Serial.printf("READ_INTERVAL: %d\n", config.interval);
+  Serial.printf("   STATION_UID: %s\n", config.station_uid);
+  Serial.printf("   STATION_NAME: %s\n", config.station_name);
+  Serial.printf("   WIFI_SSID: %s\n", config.wifi_ssid);
+  Serial.printf("   WIFI_PASSWORD: %s\n", config.wifi_password);
+  Serial.printf("   MQTT_SERVER: %s\n", config.mqtt_server);
+  Serial.printf("   MQTT_USERNAME: %s\n",config.mqtt_username);
+  Serial.printf("   MQTT_PASSWORD: %s\n", config.mqtt_password);
+  Serial.printf("   MQRR_TOPIC: %s\n", config.mqtt_topic);
+  Serial.printf("   MQRR_PORT: %d\n", config.mqtt_port);
+  Serial.printf("   READ_INTERVAL: %d\n", config.interval);
   Serial.println();
   return;
 }
@@ -90,7 +115,7 @@ void appendFile(fs::FS &fs, const char * path, const char * message){
     file.close();
 }
 
-void storeMeasurement(String directory, String fileName,const char *payload){
+void storeMeasurement(String directory, String fileName, const char *payload){
   String path = directory + "/" + fileName + ".txt";
   if (!SD.exists(directory)) {
     if (SD.mkdir(directory)) {
@@ -103,54 +128,11 @@ void storeMeasurement(String directory, String fileName,const char *payload){
   appendFile(SD, path.c_str(), payload);
 }
 
-/*   
-if (!SD.exists(path.c_str())){
-    Serial.println(" - Criando novo arquivo.");
-    appendFile(SD, path.c_str(), header);
-  } 
-*/
 
-String readFileContent(File file) {
-  String content = "";
-  while (file.available()) {
-    content += (char)file.read();
-  }
-  return content;
-}
-
-
-int removeFile(const char * filePath) {
-  Serial.println(String("Deltando aquivo:") + filePath);
-  if (SD.remove(filePath)) {
-    Serial.println("' deleted.");
-    return 1;
-  } else {
-    Serial.print("Error deleting '");
-    return 0;
-  }
-}
-
-void loopThroughFiles(const char* dirName, int max, std::function<void(char*, char*)> callback ) {
-  File root = SD.open(dirName);
-
-  if (!root) {
-    Serial.println("Failed to open directory");
-    return;
-  }
-
-  while (true) {
-    File entry = root.openNextFile();
-    if (!entry || max == 0) break;
-
-    if (!entry.isDirectory()) {
-      Serial.print("File: ");
-      Serial.println(entry.name());
-      
-      String fileContent = readFileContent(entry);
-      callback((char *)entry.name(), (char *) fileContent.c_str());
-      max -=1;
-    }
-    entry.close();
-  }
-  root.close();
-}
+// Adicion uma nova linha de metricas
+void storeLog(const char *payload){
+  String path = "/logs/boot.txt";
+  File file = SD.open(path, FILE_APPEND);
+  if (file) { file.print(payload); }
+  file.close();
+} 

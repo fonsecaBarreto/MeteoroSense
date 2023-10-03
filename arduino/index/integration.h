@@ -25,85 +25,86 @@ unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE (50)
 char msg[MSG_BUFFER_SIZE];
 
-int setupWifi(char* ssid, char*password)
+/***** WIFI ****/
+
+int setupWifi(const char *contextName, char* ssid, char*password)
 {
+  Serial.printf("%s: Estabelecendo conexão inicial", contextName);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  Serial.println("Wifi: Configuração inicial de wifi");
   WiFi.setAutoReconnect(true);
   WiFi.persistent(true);
-  // secureWifiClient.setCACert(root_ca);      // enable this line and the the "certificate" code for secure connection
+  // secureWifiClient.setCACert(root_ca);    // enable this line and the the "certificate" code for secure connection
 
   while (WiFi.status() != WL_CONNECTED) {
       delay(500);
       Serial.print(".");
   }
-
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
   
+  Serial.printf("\n%s: Contectado com sucesso \n", contextName);
+  Serial.printf("%s: IP address = %s \n", contextName, WiFi.localIP());
   return 1;
 }
 
 /***** MQTT ****/
 
-void callback(char *topic, byte *payload, unsigned int length)
+/* void callback(char *topic, byte *payload, unsigned int length)
 {
   String incommingMessage = "";
   for (int i = 0; i < length; i++)
     incommingMessage += (char)payload[i];
   Serial.println("MQTT broker: Recebimento confirmado [" + String(topic) + "]" + incommingMessage);
-}
+} */
 
 bool sendMeasurementToMqtt(char *topic, const char *payload)
 {
   bool sent = (mqttClient.publish(topic, payload, true));
   if (sent){
-    Serial.println("MQTT broker: Message publised [" + String(topic) + "]: " + payload);
+    Serial.println("  - MQTT broker: Message publised [" + String(topic) + "]: ");
   } else {
-    Serial.println("MQTT: Não foi possivel enviar");
+    Serial.println("  - MQTT: Não foi possivel enviar");
   }
   return sent;
 }
 
-int setupMqtt(char* mqtt_server, int mqtt_port)
-{
-  mqttClient.setServer(mqtt_server, mqtt_port);
-  mqttClient.setCallback(callback);
-  return 1;
-}
-
-int connectMqtt(char* mqtt_username, char* mqtt_password, char* mqtt_topic) {
+bool connectMqtt(const char *contextName, char* mqtt_username, char* mqtt_password, char* mqtt_topic) {
   if (!mqttClient.connected()) {
-    Serial.println("Desconectado");
-    Serial.print("MQTT: Tentando conexão...");
+    Serial.printf("%s: Tentando nova conexão...", contextName);
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
     if (mqttClient.connect(clientId.c_str(), mqtt_username, mqtt_password)){
-      Serial.println("MQTT: Reconected");
+      Serial.printf("%s: Reconectado", contextName);
       mqttClient.subscribe(mqtt_topic);
-      return 1;
+      return true;
     }
     Serial.print("failed, rc=");
     Serial.print(mqttClient.state());
-    return 0;
+    return false;
   }
-  Serial.println("Conectado [" + String(mqtt_topic) + "]");
-  return 1;
+  Serial.printf("%s: Conectado [ %s ]", contextName, mqtt_topic);
+  return true;
+}
+
+bool setupMqtt(const char *contextName, char* mqtt_server, int mqtt_port, char* mqtt_username, char* mqtt_password, char* mqtt_topic)
+{
+  Serial.printf("%s: Estabelecendo conexão inicial\n", contextName);
+  mqttClient.setServer(mqtt_server, mqtt_port);
+  // mqttClient.setCallback(callback);
+  return connectMqtt(contextName, mqtt_username, mqtt_password, mqtt_topic);
 }
 
 /* Ntp Client */
-int connectNtp()
+int connectNtp(const char *contextName)
 {
-  Serial.println("NTP connection : Tentando conectar....");
+  Serial.printf("%s: Estabelecendo conexão inicial\n", contextName);
+
   timeClient.begin();
-  Serial.println("NTP connection : Conectado com sucesso.");
 
   while(!timeClient.update()) {
-    Serial.printf("Nao foi possivel atualizar o NTP. Conectando novamente em 5 segundos");
-    delay(5000);
+    Serial.print(".");
+    delay(1000);
   }
+
+  Serial.printf("%s: Conectado com sucesso. \n", contextName);
   return 1;
 }
