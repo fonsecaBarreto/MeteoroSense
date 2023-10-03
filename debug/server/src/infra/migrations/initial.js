@@ -2,11 +2,14 @@ export const createTableQuery = `
   CREATE TABLE IF NOT EXISTS measurements (
     id SERIAL PRIMARY KEY,
     timestamp TIMESTAMP NOT NULL,
-    temperature FLOAT,
-    humidity FLOAT,
-    rain_cc FLOAT,
-    wind_speed FLOAT,
-    wind_dir INTEGER
+    temperatura FLOAT,
+    umidade_ar FLOAT,
+    velocidade_vento FLOAT,
+    rajada_vento FLOAT,
+    dir_vento INTEGER,
+    volume_chuva FLOAT,
+    pressao FLOAT,
+    uid VARCHAR(20)
   );
 `;
 
