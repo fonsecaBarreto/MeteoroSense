@@ -10,7 +10,11 @@
 #include "sensores.h"
 #include <stdio.h>
 #include "esp_system.h"
+#include "bt-integration.h"
 long startTime;
+
+#include <string>
+#include <vector>
 
 // Pluviometro
 extern unsigned long lastPVLImpulseTime;
@@ -25,6 +29,7 @@ extern Sensors sensors;
 const int limit_retry = 2;
 int retry_array[limit_retry];
 int indexResent = 0;
+bool BT_ENABLED = 0;
 
 /******* Objeto de Transferência de Dados *******/
 struct
@@ -38,20 +43,35 @@ struct
   int wind_dir = -1;
 } Data;
 
+
+
 String formatedDateString = "";
 char json_output[240]{0};
 char csv_header[200]{0};
 char csv_output[200]{0};
+
+
+int funcao(const std::vector<std::string>& arguments)
+{
+  if(arguments[0]== "/update")
+  {
+  Serial.printf("Agument size: %i, nOArgumentes: %i",arguments[1].length(),arguments.size());
+  createFile(SD,"/config.txt",arguments[1].c_str());
+  ESP.restart();
+  }
+  return 1;
+}
 
 void setup()
 {
   // 1. Arduino - Sistema Integrado de meteorologia
   delay(3000);
   Serial.begin(115200);
-  Serial.println("\n///////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////\n");
-  Serial.println("1. Configuração inicial;");
+  Serial.printf("\n///////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////\n\n");
+  Serial.printf("1. Configuração inicial;\n");
   pinMode(PLV_PIN, INPUT_PULLDOWN);
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
+  pinMode(16, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
 
@@ -112,11 +132,17 @@ void setup()
   convertTimeToLocaleDate(timestamp);
   String dataHora = String(formatedDateString) + "T" + timeClient.getFormattedTime();
   storeLog(("\n" + dataHora + "\n").c_str());
+
+  BluetoothConnection::SetCallback((void*)funcao);
+  
+
 }
 
-void loop()
+
+
+void Iterate()
 {
-  // 2. Inicio Loop;
+    // 2. Inicio Loop;
   int now = millis();
   int timeRemaining = startTime + config.interval - now;
   bool isMqttConnected = false;
@@ -128,7 +154,7 @@ void loop()
   }
 
   // 2.1 Tempo ocioso para captação de metricas 60s
-  if (timeRemaining > 0){
+    if (timeRemaining > 0){
     if (timeRemaining % 10000 == 0 ){
       Serial.printf("\n\n * Coletando dados, proximo resultado em %d segundos...", (timeRemaining / 1000));
       Serial.printf("\n  - WIFI: %s", isWifiConnected ? "Contectado" : "Desconectado");
@@ -147,7 +173,7 @@ void loop()
     }
     return;
   }
-
+  
   // 3 Computando dados 
   Serial.printf("\n\n3. Computando dados ...\n");
 
@@ -158,6 +184,7 @@ void loop()
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
   DHTRead(Data.humidity, Data.temperature);
   BMPRead(Data.pressure);
+  
 
   // 3.2 Redefinido variaveis de medição
   startTime = millis();
@@ -174,8 +201,29 @@ void loop()
   Serial.printf("\n\n4. Nova metrica (%sT%s)", formatedDateString, timeClient.getFormattedTime());
   presentation(timestamp);
 
-  // 5; Fim
+  // 5 Fim
   Serial.printf("\n------------------- PROXIMA ITERAÇÃO -------------------\n");
+}
+void resetMesurements()
+{
+  startTime = millis();
+  anemometerCounter = 0;
+  rainCounter = 0;
+  smallestDeltatime = 4294967295;
+}
+void loop()
+{
+  BT_ENABLED = !digitalRead(16);
+  if(BT_ENABLED)
+  {
+  BluetoothConnection::Init();
+  BluetoothConnection::ReadBluetooth();
+  }
+  else
+  {
+  if(BluetoothConnection::Shutdown())resetMesurements();
+  Iterate();
+  }
 
 }
 

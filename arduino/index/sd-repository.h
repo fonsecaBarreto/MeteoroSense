@@ -98,7 +98,21 @@ void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename
   Serial.println();
   return;
 }
+void createFile(fs::FS &fs, const char * path, const char * message){
+    Serial.printf("Salvando json no cartao SD: %s\n.", path); 
 
+    File file = fs.open(path, FILE_WRITE);
+    if(!file){
+        Serial.println(" - Falha ao encontrar cartão SD.");
+        return;
+    }
+    if(file.print(message)){
+        Serial.println(" - sucesso.");
+    } else {
+        Serial.println("- Falha ao salvar.");
+    }
+    file.close();
+}
 void appendFile(fs::FS &fs, const char * path, const char * message){
     Serial.printf(" - Salvando dados no cartao SD: %s\n", path); 
 
