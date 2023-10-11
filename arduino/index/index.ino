@@ -44,23 +44,11 @@ struct
 } Data;
 
 
-
 String formatedDateString = "";
 char json_output[240]{0};
 char csv_header[200]{0};
 char csv_output[200]{0};
 
-
-int funcao(const std::vector<std::string>& arguments)
-{
-  if(arguments[0]== "/update")
-  {
-  Serial.printf("Agument size: %i, nOArgumentes: %i",arguments[1].length(),arguments.size());
-  createFile(SD,"/config.txt",arguments[1].c_str());
-  ESP.restart();
-  }
-  return 1;
-}
 
 void setup()
 {
@@ -86,14 +74,14 @@ void setup()
   storeLog("\n\nEstação iniciada;");
 
   // 1.3 Configuração Inicial;
-  delay(2000);
+  //delay(2000);
   Serial.println("\n1.3 Carregando variaveis;");
   storeLog("\n- Carregando variaveis: ... ");
   loadConfiguration("  - Carregando variaveis", SD, configFileName, config);
   storeLog("ok;");
 
   // 1.3 Estabelecendo conexão com wifi;
-  delay(2000);
+  //delay(2000);
   Serial.println("1.4 Wifi;");
   storeLog("\n- Conectando ao wifi: ... ");
   setupWifi("  - Wifi", config.wifi_ssid, config.wifi_password);
@@ -101,21 +89,21 @@ void setup()
   storeLog((String(nivelDbm) + ";").c_str());
 
   // 1.4 Estabelecendo conexão com NTP;
-  delay(2000);
+  //delay(2000);
   Serial.println("\n1.5 NTP;");
   storeLog("\n- Conectando ao NTP: ... ");
   connectNtp("  - NTP");
   storeLog("ok;");
 
   // 1.5 Configuração incial MQTT broker;
-  delay(2000);
+  //delay(2000);
   Serial.println("\n1.6 MQTT;");
   storeLog("\n- Conectando ao MQTT: ... ");
   setupMqtt("  - MQTT", config.mqtt_server, config.mqtt_port, config.mqtt_username, config.mqtt_password, config.mqtt_topic);
   storeLog("ok;");
 
   // 1.6 Iniciando controllers;
-  delay(1000);
+  //delay(1000);
   Serial.println("\n\n1.7 Iniciando controllers;");
   setupSensors();
 
@@ -132,10 +120,7 @@ void setup()
   convertTimeToLocaleDate(timestamp);
   String dataHora = String(formatedDateString) + "T" + timeClient.getFormattedTime();
   storeLog(("\n" + dataHora + "\n").c_str());
-
-  BluetoothConnection::SetCallback((void*)funcao);
-  
-
+  BLE::Init("Luna");
 }
 
 
@@ -213,17 +198,18 @@ void resetMesurements()
 }
 void loop()
 {
+  BLE::Update();
+  /*
   BT_ENABLED = !digitalRead(16);
   if(BT_ENABLED)
   {
-  BluetoothConnection::Init();
-  BluetoothConnection::ReadBluetooth();
+
   }
   else
   {
-  if(BluetoothConnection::Shutdown())resetMesurements();
-  Iterate();
-  }
+
+  //Iterate();
+  }*/
 
 }
 

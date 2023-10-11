@@ -15,7 +15,7 @@
 #define ANEMOMETER_CIRC (2.0 * 3.14159265 * 0.085)  // Circunferência anemometro (m)
 
 // Pluviometro
-#define VOLUME_PLUVIOMETRO 0.25  // Volume do pluviometro em mm
+#define VOLUME_PLUVIOMETRO 0.34  // Volume do pluviometro em mm
 
 //Biruta
 #define NUMDIRS 8
