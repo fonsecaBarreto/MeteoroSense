@@ -1,3 +1,7 @@
+#include <SD.h>
+#include <sd_defines.h>
+#include <sd_diskio.h>
+
 #pragma once
 
 #include "FS.h"
@@ -10,9 +14,8 @@ const int chipSelectPin = 32;
 const int mosiPin = 23;
 const int misoPin = 27;
 const int clockPin = 25;
-
 const int RETRY_INTERVAL = 5000;
-StaticJsonDocument<512> doc;
+
 // Inicia leitura cartão SD
 void initSdCard(){
   SPI.begin(clockPin, misoPin, mosiPin);
@@ -38,11 +41,9 @@ void createDirectory(const char * directory){
 }
 
 // Carrega arquivo de configuração inicial
-void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename, Config &config)
-{
+void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename, Config &config, std::string& configJson) {
   Serial.printf("\n%s: Carregando variáveis de ambiente \n", contextName);
 
-  
   SPI.begin(clockPin, misoPin, mosiPin);
 
   int attemptCount = 0;
@@ -53,6 +54,7 @@ void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename
 
     if (SD.begin(chipSelectPin, SPI)){
       File file = fs.open(filename);
+      StaticJsonDocument<512> doc;
 
       if (file){
         DeserializationError error = deserializeJson(doc, file);
@@ -69,6 +71,7 @@ void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename
           config.interval = doc["INTERVAL"] | 60000;
           file.close();
           success = true;
+          serializeJson(doc, configJson);
           continue;
         }
         Serial.printf("%s: [ ERROR ] Formato inválido (JSON)\n", contextName);
@@ -98,6 +101,7 @@ void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename
   Serial.println();
   return;
 }
+
 void createFile(fs::FS &fs, const char * path, const char * message){
     Serial.printf("Salvando json no cartao SD: %s\n.", path); 
 
@@ -113,6 +117,7 @@ void createFile(fs::FS &fs, const char * path, const char * message){
     }
     file.close();
 }
+
 void appendFile(fs::FS &fs, const char * path, const char * message){
     Serial.printf(" - Salvando dados no cartao SD: %s\n", path); 
 
@@ -129,21 +134,6 @@ void appendFile(fs::FS &fs, const char * path, const char * message){
     file.close();
 }
 
-void readFile(fs::FS &fs, const char * path,std::string& output){
-    Serial.printf("Reading file: %s\n", path);
-    serializeJson(doc, output);
-    //File file = fs.open(path);
-    //if(!file){
-   //     Serial.println("Failed to open file for reading");
-   //     return;
-   // }
-
-   // Serial.print("Read from file: ");
-   // while(file.available()){
-    //    output+=file.read();
-   // }
-    //file.close();
-}
 
 void storeMeasurement(String directory, String fileName, const char *payload){
   String path = directory + "/" + fileName + ".txt";
