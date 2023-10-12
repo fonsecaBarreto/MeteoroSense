@@ -12,7 +12,7 @@ const int misoPin = 27;
 const int clockPin = 25;
 
 const int RETRY_INTERVAL = 5000;
-
+StaticJsonDocument<512> doc;
 // Inicia leitura cartão SD
 void initSdCard(){
   SPI.begin(clockPin, misoPin, mosiPin);
@@ -42,7 +42,7 @@ void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename
 {
   Serial.printf("\n%s: Carregando variáveis de ambiente \n", contextName);
 
-  StaticJsonDocument<512> doc;
+  
   SPI.begin(clockPin, misoPin, mosiPin);
 
   int attemptCount = 0;
@@ -127,6 +127,22 @@ void appendFile(fs::FS &fs, const char * path, const char * message){
         Serial.println(" - Falha ao salvar nova linha");
     }
     file.close();
+}
+
+void readFile(fs::FS &fs, const char * path,std::string& output){
+    Serial.printf("Reading file: %s\n", path);
+    serializeJson(doc, output);
+    //File file = fs.open(path);
+    //if(!file){
+   //     Serial.println("Failed to open file for reading");
+   //     return;
+   // }
+
+   // Serial.print("Read from file: ");
+   // while(file.available()){
+    //    output+=file.read();
+   // }
+    //file.close();
 }
 
 void storeMeasurement(String directory, String fileName, const char *payload){

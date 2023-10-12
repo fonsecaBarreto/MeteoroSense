@@ -6,11 +6,12 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
-
+int(*jscb)(const std::string& json);
 BLEServer* pServer = nullptr;
 BLECharacteristic* pConfigCharacteristic = nullptr;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
+std::string currentConfig;
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CONFIGURATION_UUID    "beb5483e-36e1-4688-b7f5-ea07361b26a8"
@@ -31,16 +32,19 @@ class MyCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
         std::string rxValue = pCharacteristic->getValue();
         if (!rxValue.empty()) {
-            std::cout<<"Received message: "<<std::endl;
-            std::cout<<rxValue<<std::endl;
+          currentConfig = rxValue;
+            std::cout << "Received message: " << std::endl;
+            std::cout << rxValue << std::endl;
+            if(jscb)jscb(rxValue);
             // Process the received message as needed
         }
     }
 };
 
-
+void BLE::SetConfigCallback(int(*jsCallback)(const std::string& json)){jscb=jsCallback;}
 void BLE::Init(const char* boardName)
 {
+  std::cout<<currentConfig<<std::endl;
   // Create the BLE Device
   BLEDevice::init(boardName);
 
@@ -63,6 +67,11 @@ void BLE::Init(const char* boardName)
 
   pConfigCharacteristic->addDescriptor(pDescriptor);
   pConfigCharacteristic->setCallbacks(new MyCallbacks());
+  if (currentConfig.length()>0)
+  {
+    std::cout<<"DoingSomething\n";
+    pConfigCharacteristic->setValue(currentConfig);
+  }
   // Start the service
   pService->start();
 
@@ -71,6 +80,10 @@ void BLE::Init(const char* boardName)
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(false);
   pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
+
+
+
+
   BLEDevice::startAdvertising();
   std::cout <<"Waiting a client set json\n";
 

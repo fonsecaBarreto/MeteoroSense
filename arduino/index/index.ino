@@ -25,7 +25,7 @@ extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
 extern Sensors sensors;
-
+extern std::string currentConfig;
 const int limit_retry = 2;
 int retry_array[limit_retry];
 int indexResent = 0;
@@ -49,6 +49,14 @@ char json_output[240]{0};
 char csv_header[200]{0};
 char csv_output[200]{0};
 
+
+int SaveJson(const std::string& json)
+{
+  createFile(SD,"/config.txt",json.c_str());
+  ESP.restart();
+
+  return 1;
+}
 
 void setup()
 {
@@ -120,7 +128,11 @@ void setup()
   convertTimeToLocaleDate(timestamp);
   String dataHora = String(formatedDateString) + "T" + timeClient.getFormattedTime();
   storeLog(("\n" + dataHora + "\n").c_str());
+  BLE::SetConfigCallback(SaveJson);
+  readFile(SD,"/config.txt",currentConfig);
+  
   BLE::Init("Luna");
+
 }
 
 
@@ -199,6 +211,7 @@ void resetMesurements()
 void loop()
 {
   BLE::Update();
+  Iterate();
   /*
   BT_ENABLED = !digitalRead(16);
   if(BT_ENABLED)
@@ -208,7 +221,7 @@ void loop()
   else
   {
 
-  //Iterate();
+  //
   }*/
 
 }
