@@ -1,6 +1,6 @@
 #pragma once
-/******* Configuração de ambiente *******/
 
+// --- Config data  ---
 struct Config {
   char station_uid[64];
   char station_name[64];
@@ -15,10 +15,31 @@ struct Config {
 } ;
 
 struct Config config;
-
 const char *configFileName = "/config.txt";
 
-/****** root certificate *********/
+
+// --- HeachCheck data  ---
+struct HealthCheck {
+  bool isWifiConnected;
+  bool isMqttConnected;
+  int wifiDbmLevel;
+  std::string currentMetrics;
+
+  std::string toJson() const {
+    std::string jsonStr = "{";
+    jsonStr += "\"isWifiConnected\":" + std::string(isWifiConnected ? "true" : "false") + ",";
+    jsonStr += "\"isMqttConnected\":" + std::string(isMqttConnected ? "true" : "false") + ",";
+    jsonStr += "\"wifiDbmLevel\":" + std::to_string(wifiDbmLevel) + ",";
+    jsonStr += "\"currentMetrics\":\"" + currentMetrics + "\"";
+    jsonStr += "}";
+    return jsonStr;
+  }
+} ;
+
+struct HealthCheck healthCheck = {false, false, 0, ""};
+
+
+// --- Root certificate ---
 
 static const char *root_ca PROGMEM = R"EOF(
 -----BEGIN CERTIFICATE-----
