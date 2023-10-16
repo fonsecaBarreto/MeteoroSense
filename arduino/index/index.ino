@@ -53,6 +53,7 @@ void setup() {
   delay(3000);
   Serial.begin(115200);
   Serial.printf("\n///////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////\n\n");
+  
   Serial.printf("1. Configuração inicial;\n");
   pinMode(PLV_PIN, INPUT_PULLDOWN);
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
@@ -78,13 +79,14 @@ void setup() {
   loadConfiguration("  - Carregando variaveis", SD, configFileName, config, jsonConfig);
   storeLog("ok;");
 
-  // 1.4 Inciando Bluetooth 
+  // 1.4 Inciando Bluetooth
+  Serial.println("\n1.4 Iniciando bluetooth;");
   BLE::SetConfigCallback(SaveConfigFile);
   BLE::Init(config.station_name, jsonConfig);
 
   // 1.5 Estabelecendo conexão com wifi;
   delay(1000);
-  Serial.println("1.4 Wifi;");
+  Serial.println("1.5 Wifi;");
   storeLog("\n- Conectando ao wifi: ... ");
   setupWifi("  - Wifi", config.wifi_ssid, config.wifi_password);
   int nivelDbm = (WiFi.RSSI()) * -1;
@@ -92,24 +94,24 @@ void setup() {
 
   // 1.6 Estabelecendo conexão com NTP;
   delay(1000);
-  Serial.println("\n1.5 NTP;");
+  Serial.println("\n1.6 NTP;");
   storeLog("\n- Conectando ao NTP: ... ");
   connectNtp("  - NTP");
   storeLog("ok;");
 
   // 1.7 Configuração incial MQTT broker;
   delay(1000);
-  Serial.println("\n1.6 MQTT;");
+  Serial.println("\n1.7 MQTT;");
   storeLog("\n- Conectando ao MQTT: ... ");
   setupMqtt("  - MQTT", config.mqtt_server, config.mqtt_port, config.mqtt_username, config.mqtt_password, config.mqtt_topic);
   storeLog("ok;");
 
-  // 1.6 Iniciando controllers;
+  // 1.8 Iniciando controllers;
   delay(1000);
-  Serial.println("\n\n1.7 Iniciando controllers;");
+  Serial.println("\n\n1.8 Iniciando controllers;");
   setupSensors();
 
-  // 1.7 Definindo variáives auxiliares globais;
+  // 1.9 Definindo variáives auxiliares globais;
   int now = millis();
   lastVVTImpulseTime = now;
   lastPVLImpulseTime = now;
@@ -123,48 +125,48 @@ void setup() {
   storeLog(("\n" + dataHora + "\n").c_str());
 }
 
-void loop(){
-  if (forceRestart == true) {
+void loop() {
+
+  // 1. Watchers
+  if (forceRestart == true){
     Serial.println("Reiniciando Arduino a força;");
     storeLog("Reiniciando Arduino a força;");
     delay(1000);
     ESP.restart();
   }
-  iterate();
-}
 
-void iterate(){
-  // 2. Inicio Loop;
-  int now = millis();
-  int timeRemaining = startTime + config.interval - now;
-  bool isMqttConnected = false;
-  bool isWifiConnected = false;
+  healthCheck.isWifiConnected = WiFi.status() == WL_CONNECTED;
+  healthCheck.wifiDbmLevel = !healthCheck.isMqttConnected ? 0 : (WiFi.RSSI()) * -1;
+  healthCheck.isMqttConnected = mqttClient.loop();
+  healthCheck.currentMetrics = json_output;
 
-  // 2.2 Garantindo conexão com mqqt broker;
-  if (isWifiConnected = WiFi.status() == WL_CONNECTED) {
-    isMqttConnected = mqttClient.loop();
+  // 2.1 Garantindo conexão com mqqt broker;
+  if (healthCheck.isWifiConnected && !healthCheck.isMqttConnected) {
+    healthCheck.isMqttConnected = connectMqtt("\n  - MQTT", config.mqtt_username, config.mqtt_password, config.mqtt_topic);
   }
 
-  // 2.1 Tempo ocioso para captação de metricas 60s
+  Serial.printf("\n\n * Coletando dados, proximo resultado em %d segundos...", (timeRemaining / 1000));
+  Serial.printf("\n %s", healthCheck.toJson());
+
+  // 2 Tempo ocioso para captação de metricas 60s
+  int timeRemaining = startTime + config.interval - millis();
   if (timeRemaining > 0) {
-    if (timeRemaining % 10000 == 0){
-      Serial.printf("\n\n * Coletando dados, proximo resultado em %d segundos...", (timeRemaining / 1000));
-      Serial.printf("\n  - WIFI: %s", isWifiConnected ? "Contectado" : "Desconectado");
-
-      if (isWifiConnected){
-        int nivelDbm = (WiFi.RSSI()) * -1;
-        Serial.printf("\n  - WIFI: (%d)", nivelDbm);
-      }
-
-      Serial.printf("\n  - MQTT: %s\n", isMqttConnected == true ? "Contectado" : "Desconectado");
-      if (!isMqttConnected){
-        isMqttConnected = connectMqtt("\n  - MQTT", config.mqtt_username, config.mqtt_password, config.mqtt_topic);
-      }
-
-      while (now >= millis());
-    }
+    unsigned long startMillis = millis();
+    while (millis() - startMillis < 1000);
     return;
   }
+
+  /*  
+    Serial.printf("\n  - WIFI: %s", isWifiConnected ? "Contectado" : "Desconectado");
+    Serial.printf("\n  - MQTT: %s\n", isMqttConnected == true ? "Contectado" : "Desconectado");
+    Serial.printf("\n  - WIFI: (%d)", HealthCheck.wifiDbmLevel); 
+  */
+
+  calculateMetrics();
+}
+
+void calculateMetrics()
+{
 
   // 3 Computando dados
   Serial.printf("\n\n3. Computando dados ...\n");
@@ -192,11 +194,21 @@ void iterate(){
   Serial.printf("\n\n4. Nova metrica (%sT%s)", formatedDateString, timeClient.getFormattedTime());
   presentation(timestamp);
 
-  // 5 Fim
+  // 6 Ble
+
+  if (BLE::isDeviceConnected()){
+    std::string valor = json_output;
+    printf("\nNovo valor %s\n", json_output);
+
+    BLE::updateValue("7c4c8722-8b05-4cca-b5d2-05ec864f90ee", valor);
+  }
+
+  // 6 Fim
   Serial.printf("\n------------------- PROXIMA ITERAÇÃO -------------------\n");
 }
 
-void presentation(long timestamp) {
+void presentation(long timestamp)
+{
   // Resultado das medições
   Serial.println("\nResultado:");
   Serial.printf("Timestamp..........: %d\n", timestamp);
