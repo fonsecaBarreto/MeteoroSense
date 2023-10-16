@@ -47,7 +47,7 @@ String formatedDateString = "";
 char json_output[240]{0};
 char csv_header[200]{0};
 char csv_output[200]{0};
-
+int timeRemaining=0;
 void setup() {
   // 1. Arduino - Sistema Integrado de meteorologia
   delay(3000);
@@ -136,9 +136,9 @@ void loop() {
   }
 
   healthCheck.isWifiConnected = WiFi.status() == WL_CONNECTED;
-  healthCheck.wifiDbmLevel = !healthCheck.isMqttConnected ? 0 : (WiFi.RSSI()) * -1;
+  healthCheck.wifiDbmLevel = !healthCheck.isWifiConnected ? 0 : (WiFi.RSSI()) * -1;
   healthCheck.isMqttConnected = mqttClient.loop();
-  healthCheck.currentMetrics = json_output;
+
 
   // 2.1 Garantindo conexão com mqqt broker;
   if (healthCheck.isWifiConnected && !healthCheck.isMqttConnected) {
@@ -149,7 +149,7 @@ void loop() {
   Serial.printf("\n %s", healthCheck.toJson());
 
   // 2 Tempo ocioso para captação de metricas 60s
-  int timeRemaining = startTime + config.interval - millis();
+  timeRemaining = startTime + config.interval - millis();
   if (timeRemaining > 0) {
     unsigned long startMillis = millis();
     while (millis() - startMillis < 1000);
@@ -161,12 +161,10 @@ void loop() {
     Serial.printf("\n  - MQTT: %s\n", isMqttConnected == true ? "Contectado" : "Desconectado");
     Serial.printf("\n  - WIFI: (%d)", HealthCheck.wifiDbmLevel); 
   */
-
   calculateMetrics();
 }
 
-void calculateMetrics()
-{
+void calculateMetrics() {
 
   // 3 Computando dados
   Serial.printf("\n\n3. Computando dados ...\n");
@@ -197,9 +195,9 @@ void calculateMetrics()
   // 6 Ble
 
   if (BLE::isDeviceConnected()){
-    std::string valor = json_output;
-    printf("\nNovo valor %s\n", json_output);
-
+    healthCheck.currentMetrics = json_output;
+    const char * valor = healthCheck.toJson();
+    printf("\nNovo valor %s\n", valor);
     BLE::updateValue("7c4c8722-8b05-4cca-b5d2-05ec864f90ee", valor);
   }
 

@@ -18,21 +18,22 @@ struct Config config;
 const char *configFileName = "/config.txt";
 
 
+char saida[512]{0}; 
 // --- HeachCheck data  ---
 struct HealthCheck {
   bool isWifiConnected;
   bool isMqttConnected;
   int wifiDbmLevel;
-  std::string currentMetrics;
+  const char* currentMetrics;
 
-  std::string toJson() const {
-    std::string jsonStr = "{";
-    jsonStr += "\"isWifiConnected\":" + std::string(isWifiConnected ? "true" : "false") + ",";
-    jsonStr += "\"isMqttConnected\":" + std::string(isMqttConnected ? "true" : "false") + ",";
-    jsonStr += "\"wifiDbmLevel\":" + std::to_string(wifiDbmLevel) + ",";
-    jsonStr += "\"currentMetrics\":\"" + currentMetrics + "\"";
-    jsonStr += "}";
-    return jsonStr;
+  const char* toJson() const {
+    const char *json_template = "{\"isWifiConnected\": %s, \"isMqttConnected\": %s, \"wifiDbmLevel\": %i, \"currentMetrics\": %s}";
+    sprintf(saida, json_template,
+          isWifiConnected ? "true" : "false",
+          isMqttConnected ? "true" : "false",
+          wifiDbmLevel,
+          currentMetrics);
+    return saida;
   }
 } ;
 
