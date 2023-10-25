@@ -1,5 +1,4 @@
 #pragma once
-
 // --- Config data  ---
 struct Config {
   char station_uid[64];
@@ -18,26 +17,31 @@ struct Config config;
 const char *configFileName = "/config.txt";
 
 
-char saida[512]{0}; 
 // --- HeachCheck data  ---
+char saida[512]{0}; 
 struct HealthCheck {
+  const char* softwareVersion;
+  int timestamp;
   bool isWifiConnected;
   bool isMqttConnected;
   int wifiDbmLevel;
-  const char* currentMetrics;
+  int timeRemaining;
+  // const char* currentMetrics;
 
-  const char* toJson() const {
-    const char *json_template = "{\"isWifiConnected\": %s, \"isMqttConnected\": %s, \"wifiDbmLevel\": %i, \"currentMetrics\": %s}";
+  const char* toJson() {
+    const char *json_template = "{\"softwareVersion\": \"%s\", \"isWifiConnected\": %d, \"isMqttConnected\": %d, \"wifiDbmLevel\": %i, \"timestamp\": %i,  \"timeRemaining\": %i }";
     sprintf(saida, json_template,
-          isWifiConnected ? "true" : "false",
-          isMqttConnected ? "true" : "false",
-          wifiDbmLevel,
-          currentMetrics);
+            softwareVersion,
+            isWifiConnected ? 1 : 0,
+            isMqttConnected ? 1 : 0,
+            wifiDbmLevel, 
+            timestamp, 
+            timeRemaining);
     return saida;
   }
 } ;
 
-struct HealthCheck healthCheck = {false, false, 0, ""};
+struct HealthCheck healthCheck = {"1.6", 0, false, false, 0, 0};
 
 
 // --- Root certificate ---
