@@ -4,7 +4,7 @@
 //.........................................................................................................................
 
 #include "constants.h"
-#include "conf.h"
+#include "data.h"
 #include "sd-repository.h"
 #include "integration.h"
 #include "sensores.h"
@@ -48,6 +48,7 @@ char json_output[240]{0};
 char csv_header[200]{0};
 char csv_output[200]{0};
 int timeRemaining=0;
+
 void setup() {
   // 1. Arduino - Sistema Integrado de meteorologia
   delay(3000);
@@ -123,6 +124,7 @@ void setup() {
   convertTimeToLocaleDate(timestamp);
   String dataHora = String(formatedDateString) + "T" + timeClient.getFormattedTime();
   storeLog(("\n" + dataHora + "\n").c_str());
+  healthCheck.timestamp = timestamp;
 }
 
 void loop() {
@@ -135,41 +137,44 @@ void loop() {
     ESP.restart();
   }
 
+  // 2. Health check
   healthCheck.isWifiConnected = WiFi.status() == WL_CONNECTED;
   healthCheck.wifiDbmLevel = !healthCheck.isWifiConnected ? 0 : (WiFi.RSSI()) * -1;
   healthCheck.isMqttConnected = mqttClient.loop();
+  healthCheck.timeRemaining = timeRemaining;
 
+  const char * hcJson = healthCheck.toJson();
 
-  // 2.1 Garantindo conexão com mqqt broker;
+  Serial.printf("\n\nColetando dados, proximo resultado em %d segundos...", (timeRemaining / 1000));
+  Serial.printf("\n%s",hcJson);
+
+  // 3 Garantindo conexão com mqqt broker;
   if (healthCheck.isWifiConnected && !healthCheck.isMqttConnected) {
     healthCheck.isMqttConnected = connectMqtt("\n  - MQTT", config.mqtt_username, config.mqtt_password, config.mqtt_topic);
   }
 
-  Serial.printf("\n\n * Coletando dados, proximo resultado em %d segundos...", (timeRemaining / 1000));
-  Serial.printf("\n %s", healthCheck.toJson());
+  // 4 Atualizando BLE advertsting value
+  if (BLE::isDeviceConnected()){
+    BLE::updateValue("7c4c8722-8b05-4cca-b5d2-05ec864f90ee", hcJson);
+  }
 
-  // 2 Tempo ocioso para captação de metricas 60s
+  // 5 Garantindo Tempo ocioso para captação de metricas 60s
   timeRemaining = startTime + config.interval - millis();
   if (timeRemaining > 0) {
     unsigned long startMillis = millis();
-    while (millis() - startMillis < 1000);
+    while (millis() - startMillis < 5000);
     return;
   }
 
-  /*  
-    Serial.printf("\n  - WIFI: %s", isWifiConnected ? "Contectado" : "Desconectado");
-    Serial.printf("\n  - MQTT: %s\n", isMqttConnected == true ? "Contectado" : "Desconectado");
-    Serial.printf("\n  - WIFI: (%d)", HealthCheck.wifiDbmLevel); 
-  */
-  calculateMetrics();
-}
+  // 6 Ping NTP
+  timeClient.update();
+  int timestamp = timeClient.getEpochTime();
+  convertTimeToLocaleDate(timestamp);
+  healthCheck.timestamp = timestamp;
 
-void calculateMetrics() {
-
-  // 3 Computando dados
+  // 7 Computando dados
   Serial.printf("\n\n3. Computando dados ...\n");
 
-  // 3.1 Captando dados dos controller
   Data.wind_dir = getWindDir();
   Data.wind_speed = 3.052 * (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0); // m/s
   Data.wind_gust = (3052.0f * ANEMOMETER_CIRC) / smallestDeltatime;
@@ -177,37 +182,14 @@ void calculateMetrics() {
   DHTRead(Data.humidity, Data.temperature);
   BMPRead(Data.pressure);
 
-  // 3.2 Redefinido variaveis de medição
+  // 7.1 Redefinido variaveis de medição
   startTime = millis();
   anemometerCounter = 0;
   rainCounter = 0;
   smallestDeltatime = 4294967295;
 
-  // 3.3 Ping NTP
-  timeClient.update();
-  int timestamp = timeClient.getEpochTime();
-  convertTimeToLocaleDate(timestamp);
-
-  // 4. Apresentando Dados
+  // 8. Apresentação dos Dados
   Serial.printf("\n\n4. Nova metrica (%sT%s)", formatedDateString, timeClient.getFormattedTime());
-  presentation(timestamp);
-
-  // 6 Ble
-
-  if (BLE::isDeviceConnected()){
-    healthCheck.currentMetrics = json_output;
-    const char * valor = healthCheck.toJson();
-    printf("\nNovo valor %s\n", valor);
-    BLE::updateValue("7c4c8722-8b05-4cca-b5d2-05ec864f90ee", valor);
-  }
-
-  // 6 Fim
-  Serial.printf("\n------------------- PROXIMA ITERAÇÃO -------------------\n");
-}
-
-void presentation(long timestamp)
-{
-  // Resultado das medições
   Serial.println("\nResultado:");
   Serial.printf("Timestamp..........: %d\n", timestamp);
   Serial.printf("Velocidade do vento: %f\n", Data.wind_speed);
@@ -230,6 +212,14 @@ void presentation(long timestamp)
   // Enviando Dados Remotamente
   Serial.println("\n4.2 Enviando Resultados remotamente:  ");
   bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, json_output);
+
+  // Update metric advertsting 
+  if (BLE::isDeviceConnected()){
+    // healthCheck.currentMetrics = json_output;
+    healthCheck.timestamp = timestamp;
+  }
+
+  Serial.printf("\n------------------- PROXIMA ITERAÇÃO -------------------\n");
 }
 
 // callbacks

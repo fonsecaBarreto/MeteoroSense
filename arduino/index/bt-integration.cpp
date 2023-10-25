@@ -59,11 +59,16 @@ void BLE::Init(const char *boardName, const std::string &currentConfig) {
     // Create the Configuration Characteristic
     pConfigCharacteristic = pService->createCharacteristic(
         CONFIGURATION_UUID,
-        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+        BLECharacteristic::PROPERTY_READ   | 
+        BLECharacteristic::PROPERTY_WRITE  |
+        BLECharacteristic::PROPERTY_NOTIFY);
 
     pHealthCharacteristic = pService->createCharacteristic(
         HEALTH_CHECK_UUID,
-        BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+        BLECharacteristic::PROPERTY_READ   |
+        BLECharacteristic::PROPERTY_WRITE  |
+        BLECharacteristic::PROPERTY_NOTIFY |
+        BLECharacteristic::PROPERTY_INDICATE);
 
     pConfigCharacteristic->setCallbacks(new MyCallbacks());
     if (currentConfig.length() > 0) {
@@ -72,7 +77,13 @@ void BLE::Init(const char *boardName, const std::string &currentConfig) {
     }
 
     pHealthCharacteristic->setCallbacks(new MyCallbacks());
-    pHealthCharacteristic->setValue("VALOR PARA HEALTH CHECK");
+    pHealthCharacteristic->setValue("");
+
+
+
+    // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
+    // Create a BLE Descriptor
+    pHealthCharacteristic->addDescriptor(new BLE2902());
 
     // Start the service
     pService->start();
@@ -89,8 +100,8 @@ void BLE::Init(const char *boardName, const std::string &currentConfig) {
 
 void BLE::updateValue(const char *characteristicId, const std::string &newValue){
     if (newValue.length() > 0) {
-        std::cout << "New value to characteristic\n";
         pHealthCharacteristic->setValue(newValue);
+        pHealthCharacteristic->notify();
     }
 }
 
