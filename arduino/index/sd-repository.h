@@ -23,7 +23,7 @@ void initSdCard(){
     Serial.printf("\n  - Cartão não encontrado. tentando novamente em %d segundos ...", 2);
     delay(2000);
   }
-  Serial.printf("\n  - Leitor de Cartão iniciado com sucesso!.");
+  Serial.printf("\n  - Leitor de Cartão iniciado com sucesso!.\n");
 }
 
 // Adicionar novo diretorio
@@ -41,8 +41,8 @@ void createDirectory(const char * directory){
 }
 
 // Carrega arquivo de configuração inicial
-void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename, Config &config, std::string& configJson) {
-  Serial.printf("\n%s: Carregando variáveis de ambiente \n", contextName);
+void loadConfiguration(fs::FS &fs, const char *filename, Config &config, std::string& configJson) {
+  Serial.printf("\n - Carregando variáveis de ambiente");
 
   SPI.begin(clockPin, misoPin, mosiPin);
 
@@ -50,7 +50,7 @@ void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename
   bool success = false;
   while (success == false) {
 
-    Serial.printf("%s: Iniciando leitura do arquivo de configuração %s (tentativa: %d) \n", contextName, filename, attemptCount + 1);
+    Serial.printf("\n - Iniciando leitura do arquivo de configuração %s (tentativa: %d)", filename, attemptCount + 1);
 
     if (SD.begin(chipSelectPin, SPI)){
       File file = fs.open(filename);
@@ -74,30 +74,21 @@ void loadConfiguration(const char *contextName, fs::FS &fs, const char *filename
           serializeJson(doc, configJson);
           continue;
         }
-        Serial.printf("%s: [ ERROR ] Formato inválido (JSON)\n", contextName);
+        Serial.printf("\n - [ ERROR ] Formato inválido (JSON)\n");
         Serial.println(error.c_str());
       }
-      Serial.printf("%s: [ ERROR ] Arquivo de configuração não encontrado\n", contextName);
+      Serial.printf("\n - [ ERROR ] Arquivo de configuração não encontrado\n");
     } else {
-      Serial.printf("%s: [ ERROR ] Cartão SD não encontrado.\n", contextName);
+      Serial.printf("\n - [ ERROR ] Cartão SD não encontrado.\n");
     }
 
-    Serial.printf("%s: Proxima tentativa de re-leitura em %d segundos ... \n\n\n", contextName, (RETRY_INTERVAL / 1000));
+    Serial.printf("\n - Proxima tentativa de re-leitura em %d segundos ... \n\n\n", (RETRY_INTERVAL / 1000));
     attemptCount++;
     delay(RETRY_INTERVAL);
   }
 
-  Serial.printf("%s: Variáveis de ambiente carregadas com sucesso!\n\n", contextName);
-  Serial.printf("   STATION_UID: %s\n", config.station_uid);
-  Serial.printf("   STATION_NAME: %s\n", config.station_name);
-  Serial.printf("   WIFI_SSID: %s\n", config.wifi_ssid);
-  Serial.printf("   WIFI_PASSWORD: %s\n", config.wifi_password);
-  Serial.printf("   MQTT_SERVER: %s\n", config.mqtt_server);
-  Serial.printf("   MQTT_USERNAME: %s\n",config.mqtt_username);
-  Serial.printf("   MQTT_PASSWORD: %s\n", config.mqtt_password);
-  Serial.printf("   MQRR_TOPIC: %s\n", config.mqtt_topic);
-  Serial.printf("   MQRR_PORT: %d\n", config.mqtt_port);
-  Serial.printf("   READ_INTERVAL: %d\n", config.interval);
+  Serial.printf("\n - Variáveis de ambiente carregadas com sucesso!");
+  Serial.printf("\n - %s", configJson.c_str());
   Serial.println();
   return;
 }
@@ -144,7 +135,6 @@ void storeMeasurement(String directory, String fileName, const char *payload){
       Serial.println(" - Falha ao criar diretorio de metricas.");
     }
   }
-  Serial.println(" - Atualizando arquivo.");
   appendFile(SD, path.c_str(), payload);
 }
 

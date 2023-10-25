@@ -5,67 +5,86 @@ struct Config {
   char station_name[64];
   char wifi_ssid[64];
   char wifi_password[64];
-  char mqtt_server[64]; 
-  char mqtt_username[64]; 
-  char mqtt_password[64]; 
-  char mqtt_topic[64]; 
+  char mqtt_server[64];
+  char mqtt_username[64];
+  char mqtt_password[64];
+  char mqtt_topic[64];
   int mqtt_port;
   int interval;
-} ;
+};
 
 struct Config config;
 const char *configFileName = "/config.txt";
 
-
 // --- HeachCheck data  ---
-char saida[512]{0}; 
+
+char hcSaida[512]{0};
 struct HealthCheck {
-  const char* softwareVersion;
+  const char *softwareVersion;
   int timestamp;
   bool isWifiConnected;
   bool isMqttConnected;
   int wifiDbmLevel;
   int timeRemaining;
-  // const char* currentMetrics;
 
-  const char* toJson() {
+  const char *toJson(){
     const char *json_template = "{\"softwareVersion\": \"%s\", \"isWifiConnected\": %d, \"isMqttConnected\": %d, \"wifiDbmLevel\": %i, \"timestamp\": %i,  \"timeRemaining\": %i }";
-    sprintf(saida, json_template,
+    sprintf(hcSaida, json_template,
             softwareVersion,
             isWifiConnected ? 1 : 0,
             isMqttConnected ? 1 : 0,
-            wifiDbmLevel, 
-            timestamp, 
+            wifiDbmLevel,
+            timestamp,
             timeRemaining);
-    return saida;
+    return hcSaida;
   }
-} ;
+};
 
 struct HealthCheck healthCheck = {"1.6", 0, false, false, 0, 0};
 
+// --- Metrics data  ---
 
-// --- Root certificate ---
+char metricsjsonOutput[240]{0};
+char metricsCsvOutput[240]{0};
+char csvHeader[200]{0};
 
-static const char *root_ca PROGMEM = R"EOF(
------BEGIN CERTIFICATE-----
-MIIDaTCCAlGgAwIBAgIUcQZkqAKrBQMk4XmAUqSjiwOdOxEwDQYJKoZIhvcNAQEL
-BQAwRDELMAkGA1UEBhMCQlIxDjAMBgNVBAcMBU1hY2FlMQ0wCwYDVQQKDAR1ZnJq
-MRYwFAYDVQQDDA0xOTIuMTY4LjAuMTczMB4XDTIzMDczMDE3NDg0MloXDTIzMDky
-ODE3NDg0MlowRDELMAkGA1UEBhMCQlIxDjAMBgNVBAcMBU1hY2FlMQ0wCwYDVQQK
-DAR1ZnJqMRYwFAYDVQQDDA0xOTIuMTY4LjAuMTczMIIBIjANBgkqhkiG9w0BAQEF
-AAOCAQ8AMIIBCgKCAQEAzliqbGb2uSlPmTbUYAOPBoXWHIoyogT26H7JR8KmY5NQ
-3ph6IARXolnCTgkoCoWD8f8Bd6BkpQIOGyhYjS73DhcUyMmBqguo6K1bsGU2R+eg
-rSS2xgaFvfFhKEAiKd4GoHwiMLIkDr44gkAY+bERaodGnkgskOe2OVKTn/05cYIc
-yNM3smn2QuwkiXwYpTlNq2cH0wzQiBzKbTQUeoCR5MgOslDGlE/1EgV0mxXPPh8f
-Ssr/xDXFnhJZJBFt9FMMTtolNNHyBMDrm/kb7Q9rc90FsFeKjoogweZdPRHtWYpK
-G2tmlnSfJEVP+/8laP/Fz6sBh70zllbLoKseyMHE6QIDAQABo1MwUTAdBgNVHQ4E
-FgQUTN3ovob1OSKatIqNeq/pFW1VAmEwHwYDVR0jBBgwFoAUTN3ovob1OSKatIqN
-eq/pFW1VAmEwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAmcyl
-t3cWTMrW2wIFkC8EynS42sZpqyUivjNn0aizvqdhdqc+KKZnMpiScwmBLEzEGddG
-cZmULcZgFBZ9t2uF37PG4rEjPzTbkZNhYS+NFdlkRa6FikRppShYiFb+jzt2XQIT
-rM/4qExSnDYM6H3tfhYslZf/FY2+zZ1QvqB+z9PDTCqlm7U5JBuRSIVmIyTr+enO
-EumFh6mVy7+hUW084rOM7buJDD4OJ7f0YkqLZRtb5Dd5JF35GzX+kfKPU3O0fhmY
-/RVAQjHf6ENzxC+RNYLD82JFjYp7GENsmLZBumHRoUhtJCDb+bOmehh/7d19B5ry
-CggHbmPo6ouMwWfA+g==
------END CERTIFICATE-----
-)EOF";
+struct Metrics {
+  float wind_speed = 0;
+  float wind_gust = 0;
+  float rain_acc = 0;
+  float humidity = 0;
+  float temperature = 0;
+  float pressure = 0;
+  int wind_dir = -1;
+  long timestamp;
+} Data;
+
+void parseData() {
+  // parse measurements data to json
+  const char *json_template = "{\"timestamp\": %i, \"temperatura\": %s, \"umidade_ar\": %s, \"velocidade_vento\": %.2f, \"rajada_vento\": %.2f, \"dir_vento\": %d, \"volume_chuva\": %.2f, \"pressao\": %s, \"uid\": \"%s\", \"identidade\": \"%s\"}";
+  sprintf(metricsjsonOutput, json_template,
+          Data.timestamp,
+          isnan(Data.temperature) ? "null" : String(Data.temperature),
+          isnan(Data.humidity) ? "null" : String(Data.humidity),
+          Data.wind_speed,
+          Data.wind_gust,
+          Data.wind_dir,
+          Data.rain_acc,
+          Data.pressure == -1 ? "null" : String(Data.pressure),
+          config.station_uid,
+          config.station_name);
+
+  // parse measurement data to csv
+  const char *csv_template = "%i,%s,%s,%.2f,%.2f,%d,%.2f,%s,%s,%s\n";
+  sprintf(metricsCsvOutput, csv_template,
+          Data.timestamp,
+          isnan(Data.temperature) ? "null" : String(Data.temperature),
+          isnan(Data.humidity) ? "null" : String(Data.humidity),
+          Data.wind_speed,
+          Data.wind_gust,
+          Data.wind_dir,
+          Data.rain_acc,
+          Data.pressure == -1 ? "null" : String(Data.pressure),
+          config.station_uid,
+          config.station_name);
+}
