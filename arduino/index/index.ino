@@ -43,7 +43,6 @@ void logIt(const std::string &message, bool store = false){
 }
 
 void setup() {
-  // 1. Arduino - Sistema Integrado de meteorologia
   delay(3000);
   Serial.begin(115200);
   logIt("\n >> Sistema Integrado de meteorologia << \n");
@@ -68,7 +67,7 @@ void setup() {
   BLE::SetConfigCallback(SaveConfigFile);
   BLE::Init(config.station_name, jsonConfig);
 
-  logIt("1.2 Estabelecendo conexão com wifi;", true);
+  logIt("\n1.2 Estabelecendo conexão com wifi ", true);
   setupWifi("  - Wifi", config.wifi_ssid, config.wifi_password);
   int nivelDbm = (WiFi.RSSI()) * -1;
   storeLog((String(nivelDbm) + ";").c_str());
@@ -94,15 +93,11 @@ void setup() {
   String dataHora = String(formatedDateString) + "T" + timeClient.getFormattedTime();
   storeLog(("\n" + dataHora + "\n").c_str());
   healthCheck.timestamp = timestamp;
-  config.interval = 5000;
 }
 
 void loop() {
 
-  // 1. Watchers
-  handleWatchers();
-
-  // 2. Health check
+  // Health check
   healthCheck.isWifiConnected = WiFi.status() == WL_CONNECTED;
   healthCheck.wifiDbmLevel = !healthCheck.isWifiConnected ? 0 : (WiFi.RSSI()) * -1;
   healthCheck.isMqttConnected = mqttClient.loop();
@@ -113,17 +108,17 @@ void loop() {
   Serial.printf("\n\nColetando dados, proximo resultado em %d segundos...", (timeRemaining / 1000));
   Serial.printf("\n%s",hcJson);
 
-  // 3 Garantindo conexão com mqqt broker;
+  // Garantindo conexão com mqqt broker;
   if (healthCheck.isWifiConnected && !healthCheck.isMqttConnected) {
     healthCheck.isMqttConnected = connectMqtt("\n  - MQTT", config.mqtt_username, config.mqtt_password, config.mqtt_topic);
   }
 
-  // 4 Atualizando BLE advertsting value
+  // Atualizando BLE advertsting value
   if (BLE::isDeviceConnected()){
-    BLE::updateValue("7c4c8722-8b05-4cca-b5d2-05ec864f90ee", hcJson);
+    BLE::updateValue(HEALTH_CHECK_UUID, hcJson);
   }
 
-  // 5 Garantindo Tempo ocioso para captação de metricas 60s
+  // Garantindo Tempo ocioso para captação de metricas 60s
   timeRemaining = startTime + config.interval - millis();
   if (timeRemaining > 0) {
     unsigned long startMillis = millis();
@@ -131,14 +126,14 @@ void loop() {
     return;
   }
 
-  // 6 Ping NTP
+  // Ping NTP
   timeClient.update();
   int timestamp = timeClient.getEpochTime();
   convertTimeToLocaleDate(timestamp);
   healthCheck.timestamp = timestamp;
 
-  // 7 Computando dados
-  Serial.printf("\n\n3. Computando dados ...\n");
+  // Computando dados
+  Serial.printf("\n\n Computando dados ...\n");
 
   Data.timestamp = timestamp;
   Data.wind_dir = getWindDir();
@@ -148,7 +143,7 @@ void loop() {
   DHTRead(Data.humidity, Data.temperature);
   BMPRead(Data.pressure);
 
-  // 7.1 Redefinido variaveis de medição
+  // Redefinido variaveis de medição
   startTime = millis();
   anemometerCounter = 0;
   rainCounter = 0;
@@ -160,36 +155,29 @@ void loop() {
   Serial.printf("\nResultado JSON:\n%s\n", metricsjsonOutput);
 
   // Armazenamento local
-  Serial.println("\n4.1. Gravando em disco:");
+  Serial.println("\n Gravando em disco:");
   storeMeasurement("/metricas", formatedDateString, metricsCsvOutput);
 
   // Enviando Dados Remotamente
-  Serial.println("\n4.2 Enviando Resultados:  ");
+  Serial.println("\n Enviando Resultados:  ");
   bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, metricsjsonOutput);
 
-  // Update metric advertsting 
+  // Update metrics advertsting value
   if (BLE::isDeviceConnected()){
-    // healthCheck.currentMetrics = json_output;
-    healthCheck.timestamp = timestamp;
+    BLE::updateValue(METRICS_UUID, metricsjsonOutput);
   }
 
   Serial.printf("\n >> PROXIMA ITERAÇÃO\n");
 }
 
-
-void handleWatchers(){
-if (forceRestart == true){
-    Serial.println("Reiniciando Arduino a força;");
-    storeLog("Reiniciando Arduino a força;");
-    delay(1000);
-    ESP.restart();
-  }
-}
-
 // callbacks
 int SaveConfigFile(const std::string &json) {
   createFile(SD, "/config.txt", json.c_str());
-  forceRestart = true;
+
+  logIt("Configuração alterar via bluetooth", true);
+  logIt("Reiniciando Arduino a força;", true);
+  delay(1000);
+  ESP.restart();
   return 1;
 }
 

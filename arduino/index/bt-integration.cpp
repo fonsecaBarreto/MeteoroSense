@@ -1,3 +1,6 @@
+
+#pragma once
+#include "esp_system.h"
 #include "bt-integration.h"
 #include <iostream>
 #include <BLEDevice.h>
@@ -5,14 +8,11 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
-// Station BLE service & characteristics
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CONFIGURATION_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define HEALTH_CHECK_UUID "7c4c8722-8b05-4cca-b5d2-05ec864f90ee"
-
 BLEServer *pServer = nullptr;
 BLECharacteristic *pConfigCharacteristic = nullptr;
 BLECharacteristic *pHealthCharacteristic = nullptr;
+BLECharacteristic *pMetricsCharacteristic = nullptr;
+
 bool deviceConnected = false;
 int (*jscb)(const std::string &json);
 
@@ -63,27 +63,31 @@ void BLE::Init(const char *boardName, const std::string &currentConfig) {
         BLECharacteristic::PROPERTY_WRITE  |
         BLECharacteristic::PROPERTY_NOTIFY);
 
-    pHealthCharacteristic = pService->createCharacteristic(
-        HEALTH_CHECK_UUID,
-        BLECharacteristic::PROPERTY_READ   |
-        BLECharacteristic::PROPERTY_WRITE  |
-        BLECharacteristic::PROPERTY_NOTIFY |
-        BLECharacteristic::PROPERTY_INDICATE);
-
     pConfigCharacteristic->setCallbacks(new MyCallbacks());
     if (currentConfig.length() > 0) {
         std::cout << "DoingSomething\n";
         pConfigCharacteristic->setValue(currentConfig);
     }
 
+    // Create the Health Check Characteristic
+    pHealthCharacteristic = pService->createCharacteristic(
+        HEALTH_CHECK_UUID,
+        BLECharacteristic::PROPERTY_READ   |
+        BLECharacteristic::PROPERTY_NOTIFY |
+        BLECharacteristic::PROPERTY_INDICATE);
+
     pHealthCharacteristic->setCallbacks(new MyCallbacks());
     pHealthCharacteristic->setValue("");
 
+    // Create the Metrics Characteristic
+    pMetricsCharacteristic = pService->createCharacteristic(
+        METRICS_UUID,
+        BLECharacteristic::PROPERTY_READ   |
+        BLECharacteristic::PROPERTY_NOTIFY |
+        BLECharacteristic::PROPERTY_INDICATE);
 
-
-    // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
-    // Create a BLE Descriptor
-    pHealthCharacteristic->addDescriptor(new BLE2902());
+    pMetricsCharacteristic->setCallbacks(new MyCallbacks());
+    pMetricsCharacteristic->setValue("");
 
     // Start the service
     pService->start();
@@ -100,8 +104,13 @@ void BLE::Init(const char *boardName, const std::string &currentConfig) {
 
 void BLE::updateValue(const char *characteristicId, const std::string &newValue){
     if (newValue.length() > 0) {
-        pHealthCharacteristic->setValue(newValue);
-        pHealthCharacteristic->notify();
+        if(characteristicId == HEALTH_CHECK_UUID){
+            pHealthCharacteristic->setValue(newValue);
+            pHealthCharacteristic->notify();
+        }else if(characteristicId == METRICS_UUID){
+            pMetricsCharacteristic->setValue(newValue);
+            pMetricsCharacteristic->notify();
+        }
     }
 }
 

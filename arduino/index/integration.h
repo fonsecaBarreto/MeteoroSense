@@ -34,9 +34,8 @@ int setupWifi(const char *contextName, char* ssid, char*password)
   WiFi.setAutoReconnect(true);
   WiFi.persistent(true);
   // secureWifiClient.setCACert(root_ca);    // enable this line and the the "certificate" code for secure connection
-
   while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
+      delay(1000);
       Serial.print(".");
   }
   
