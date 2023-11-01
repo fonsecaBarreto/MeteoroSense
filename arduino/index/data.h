@@ -18,7 +18,6 @@ const char *configFileName = "/config.txt";
 
 // --- HeachCheck data  ---
 
-char hcSaida[512]{0};
 struct HealthCheck {
   const char *softwareVersion;
   int timestamp;
@@ -26,27 +25,32 @@ struct HealthCheck {
   bool isMqttConnected;
   int wifiDbmLevel;
   int timeRemaining;
-
-  const char *toJson(){
-    const char *json_template = "{\"softwareVersion\": \"%s\", \"isWifiConnected\": %d, \"isMqttConnected\": %d, \"wifiDbmLevel\": %i, \"timestamp\": %i,  \"timeRemaining\": %i }";
-    sprintf(hcSaida, json_template,
-            softwareVersion,
-            isWifiConnected ? 1 : 0,
-            isMqttConnected ? 1 : 0,
-            wifiDbmLevel,
-            timestamp,
-            timeRemaining);
-    return hcSaida;
-  }
 };
 
-struct HealthCheck healthCheck = {"1.6", 0, false, false, 0, 0};
-
+char hcJsonOutput[240]{0};
+char hcCsvOutput[240]{0};
+const char *parseHealthCheckData(HealthCheck hc, int type = 1) {
+  if (type == 1) {
+    const char *hc_dto = "%s,%d,%d,%i,%i,%i";
+    sprintf(hcCsvOutput, hc_dto,
+            hc.softwareVersion,
+            hc.isWifiConnected ? 1 : 0,
+            hc.isMqttConnected ? 1 : 0,
+            hc.wifiDbmLevel,
+            hc.timestamp,
+            hc.timeRemaining);
+    return hcCsvOutput;
+  } else {
+    const char *json_template = "{\"isWifiConnected\": %d, \"isMqttConnected\": %d, \"wifiDbmLevel\": %i, \"timestamp\": %i}";
+    sprintf(hcJsonOutput, json_template,
+            hc.isWifiConnected ? 1 : 0,
+            hc.isMqttConnected ? 1 : 0,
+            hc.wifiDbmLevel,
+            hc.timestamp);
+    return hcJsonOutput;
+  }
+}
 // --- Metrics data  ---
-
-char metricsjsonOutput[240]{0};
-char metricsCsvOutput[240]{0};
-char csvHeader[200]{0};
 
 struct Metrics {
   float wind_speed = 0;
@@ -58,6 +62,10 @@ struct Metrics {
   int wind_dir = -1;
   long timestamp;
 } Data;
+
+char metricsjsonOutput[240]{0};
+char metricsCsvOutput[240]{0};
+char csvHeader[200]{0};
 
 void parseData() {
   // parse measurements data to json
