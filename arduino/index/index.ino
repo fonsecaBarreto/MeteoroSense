@@ -1,6 +1,6 @@
 // Autor: Lucas Fonseca e Gabriel Fonseca
 // Titulo: Sit arduino
-// Versão: 1.6 (BlueTooth);
+// Versão: 1.6.5 (BlueTooth BLE);
 //.........................................................................................................................
 
 #include "constants.h"
@@ -14,8 +14,6 @@
 #include <string>
 #include <vector>
 
-long startTime;
-
 // Pluviometro
 extern unsigned long lastPVLImpulseTime;
 extern unsigned int rainCounter;
@@ -25,16 +23,14 @@ extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
 
+// Sensors
 extern Sensors sensors;
-const int limit_retry = 2;
-int retry_array[limit_retry];
-int indexResent = 0;
-bool BT_ENABLED = 0;
-bool forceRestart = false;
-String formatedDateString = "";
+
+// globals
+long startTime;
 int timeRemaining=0;
 std::string jsonConfig;
-
+String formatedDateString = "";
 struct HealthCheck healthCheck = {"1.6", 0, false, false, 0, 0};
 
 void logIt(const std::string &message, bool store = false){
@@ -97,10 +93,7 @@ void setup() {
   storeLog(("\n" + dataHora + "\n").c_str());
 }
 
-
-
 void loop() {
-
   startTime = millis();
 
   timeClient.update();
@@ -124,10 +117,9 @@ void loop() {
     healthCheck.timeRemaining = timeRemaining;
 
     const char * hcCsv = parseHealthCheckData(healthCheck, 1);
-    const char * hcJson = parseHealthCheckData(healthCheck, 2);
 
     Serial.printf("\n\nColetando dados, metricas em %d segundos ...", (timeRemaining / 1000));
-    Serial.printf("\n%s",hcJson);
+    Serial.printf("\n  - %s",hcCsv);
 
     // Garantindo conexão com mqqt broker;
     if (healthCheck.isWifiConnected && !healthCheck.isMqttConnected) {
@@ -152,7 +144,7 @@ void loop() {
   DHTRead(Data.humidity, Data.temperature);
   BMPRead(Data.pressure);
 
-  // 8. Apresentação dos Dados
+  // Apresentação
   parseData();
   Serial.printf("\nResultado CSV:\n%s", metricsCsvOutput); 
   Serial.printf("\nResultado JSON:\n%s\n", metricsjsonOutput);
@@ -168,17 +160,27 @@ void loop() {
   // Update metrics advertsting value
   BLE::updateValue(HEALTH_CHECK_UUID, ("ME: " + String(metricsCsvOutput)).c_str());
   Serial.printf("\n >> PROXIMA ITERAÇÃO\n");
-
-  delay(5000);
 }
 
 // callbacks
 int bluetoothController(const char *uid, const std::string &content) {
-  if (uid == CONFIGURATION_UUID) {
-    createFile(SD, "/config.txt", content.c_str());
-    logIt("Configuração alterar via bluetooth", true);
+  if (content.length() == 0) return 0;
+  printf("Bluetooth message received: %s\n", uid);
+  if (content == "@@RESTART") {
     logIt("Reiniciando Arduino a força;", true);
-    delay(1000);
+    delay(2000);
+    ESP.restart();
+    return 1;
+  } else if(content == "@@BLE_SHUTDOWN") {
+    logIt("Desligando o BLE permanentemente", true);
+    delay(2000);
+    BLE::stop();
+    return 1;
+  } else {
+    logIt("Modificando configuração de ambiente via bluetooth", true);
+    delay(2000);
+    createFile(SD, "/config.txt", content.c_str());
+    logIt("Reiniciando Arduino a força;", true);
     ESP.restart();
     return 1;
   }
