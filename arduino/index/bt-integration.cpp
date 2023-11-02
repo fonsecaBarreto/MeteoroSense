@@ -39,8 +39,12 @@ void BLE::Init(const char *boardName, int (*callback)(const char *uid, const std
 
     characteristicCB = callback;
 
+    char boardOutputName[120]{0};
+    const char *boardNameTemplate = "SIT-BOARD-%s";
+    sprintf(boardOutputName, boardNameTemplate, boardName);
+
     // Create the BLE Device
-    BLEDevice::init(boardName);
+    BLEDevice::init(boardOutputName);
 
     // Create the BLE Server
     pServer = BLEDevice::createServer();
@@ -63,10 +67,8 @@ void BLE::Init(const char *boardName, int (*callback)(const char *uid, const std
     pHealthCharacteristic = pService->createCharacteristic(
         HEALTH_CHECK_UUID,
         BLECharacteristic::PROPERTY_READ   |
-        BLECharacteristic::PROPERTY_NOTIFY |
-        BLECharacteristic::PROPERTY_INDICATE);
+        BLECharacteristic::PROPERTY_NOTIFY );
 
-    pHealthCharacteristic->setCallbacks(new CharacteristicsCallback());
     pHealthCharacteristic->setValue("");
 
     // Start the service
@@ -77,7 +79,6 @@ void BLE::Init(const char *boardName, int (*callback)(const char *uid, const std
     pAdvertising->addServiceUUID(SERVICE_UUID);
     pAdvertising->setScanResponse(false);
     pAdvertising->setMinPreferred(0x0); // set value to 0x00 to not advertise this parameter
-
     BLEDevice::startAdvertising();
 }
 
@@ -96,6 +97,9 @@ void BLE::updateValue(const char *characteristicId, const std::string &newValue)
     }
 }
 
-bool BLE::isDeviceConnected(){
-    return deviceConnected;
+bool BLE::stop(){
+    BLEDevice::getAdvertising()->stop();
+    deviceConnected = false;
+    BLEDevice::deinit(true);
+    return true;
 }
