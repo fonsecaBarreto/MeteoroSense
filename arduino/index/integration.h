@@ -1,10 +1,9 @@
-// Titulo: Integração HTTP
+// Titulo: Integração HTTP & MQQT
 // Data: 30/07/2023
 //.........................................................................................................................
 
 #pragma once
-#include <WiFi.h>
-// #include <WiFiClientSecure.h>
+#include <WiFi.h> // #include <WiFiClientSecure.h>
 #include <NTPClient.h>
 #include <PubSubClient.h>
 
@@ -35,9 +34,8 @@ int setupWifi(const char *contextName, char* ssid, char*password)
   WiFi.setAutoReconnect(true);
   WiFi.persistent(true);
   // secureWifiClient.setCACert(root_ca);    // enable this line and the the "certificate" code for secure connection
-
   while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
+      delay(1000);
       Serial.print(".");
   }
   
@@ -45,16 +43,6 @@ int setupWifi(const char *contextName, char* ssid, char*password)
   Serial.printf("%s: IP address = %s \n", contextName, WiFi.localIP());
   return 1;
 }
-
-/***** MQTT ****/
-
-/* void callback(char *topic, byte *payload, unsigned int length)
-{
-  String incommingMessage = "";
-  for (int i = 0; i < length; i++)
-    incommingMessage += (char)payload[i];
-  Serial.println("MQTT broker: Recebimento confirmado [" + String(topic) + "]" + incommingMessage);
-} */
 
 bool sendMeasurementToMqtt(char *topic, const char *payload)
 {
@@ -85,8 +73,7 @@ bool connectMqtt(const char *contextName, char* mqtt_username, char* mqtt_passwo
   return true;
 }
 
-bool setupMqtt(const char *contextName, char* mqtt_server, int mqtt_port, char* mqtt_username, char* mqtt_password, char* mqtt_topic)
-{
+bool setupMqtt(const char *contextName, char* mqtt_server, int mqtt_port, char* mqtt_username, char* mqtt_password, char* mqtt_topic){
   Serial.printf("%s: Estabelecendo conexão inicial\n", contextName);
   mqttClient.setServer(mqtt_server, mqtt_port);
   // mqttClient.setCallback(callback);

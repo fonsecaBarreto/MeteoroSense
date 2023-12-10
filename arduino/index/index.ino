@@ -1,16 +1,18 @@
 // Autor: Lucas Fonseca e Gabriel Fonseca
 // Titulo: Sit arduino
-// Versão: 1.5.1;
+// Versão: 1.6.5 (BlueTooth BLE);
 //.........................................................................................................................
 
 #include "constants.h"
-#include "conf.h"
+#include "data.h"
 #include "sd-repository.h"
 #include "integration.h"
 #include "sensores.h"
 #include <stdio.h>
 #include "esp_system.h"
-long startTime;
+#include "bt-integration.h"
+#include <string>
+#include <vector>
 
 // Pluviometro
 extern unsigned long lastPVLImpulseTime;
@@ -20,222 +22,169 @@ extern unsigned int rainCounter;
 extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
+
+// Sensors
 extern Sensors sensors;
 
-const int limit_retry = 2;
-int retry_array[limit_retry];
-int indexResent = 0;
-
-/******* Objeto de Transferência de Dados *******/
-struct
-{
-  float wind_speed = 0;
-  float wind_gust = 0;
-  float rain_acc = 0;
-  float humidity = 0;
-  float temperature = 0;
-  float pressure = 0;
-  int wind_dir = -1;
-} Data;
-
+// globals
+long startTime;
+int timeRemaining=0;
+std::string jsonConfig;
 String formatedDateString = "";
-char json_output[240]{0};
-char csv_header[200]{0};
-char csv_output[200]{0};
+struct HealthCheck healthCheck = {"1.6", 0, false, false, 0, 0};
 
-void setup()
-{
-  // 1. Arduino - Sistema Integrado de meteorologia
+void logIt(const std::string &message, bool store = false){
+  Serial.print(message.c_str());
+  if(store == true){
+    storeLog(message.c_str());
+  }
+}
+
+void setup() {
   delay(3000);
   Serial.begin(115200);
-  Serial.println("\n///////////////////////////////////\nSistema Integrado de meteorologia\n///////////////////////////////////\n");
-  Serial.println("1. Configuração inicial;");
+  logIt("\n >> Sistema Integrado de meteorologia << \n");
+
   pinMode(PLV_PIN, INPUT_PULLDOWN);
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
+  pinMode(16, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PLV_PIN), pluviometerChange, RISING);
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
 
-  // 1.1 Iniciando Cartão SD
-  Serial.printf("\n1.1 Iniciando cartão SD");
+  logIt("\nIniciando cartão SD");
   initSdCard();
 
-  // 1.2 Criando diretorios padrões
-  Serial.printf("\n\n1.2 Criando diretorios padrões");
+  logIt("\nCriando diretorios padrões");
   createDirectory("/metricas");
   createDirectory("/logs");
-  storeLog("\n\nEstação iniciada;");
 
-  // 1.3 Configuração Inicial;
-  delay(2000);
-  Serial.println("\n1.3 Carregando variaveis;");
-  storeLog("\n- Carregando variaveis: ... ");
-  loadConfiguration("  - Carregando variaveis", SD, configFileName, config);
-  storeLog("ok;");
+  logIt("\n1. Estação iniciada;", true);
+  loadConfiguration(SD, configFileName, config, jsonConfig);
 
-  // 1.3 Estabelecendo conexão com wifi;
-  delay(2000);
-  Serial.println("1.4 Wifi;");
-  storeLog("\n- Conectando ao wifi: ... ");
+  logIt("\n1.1 Iniciando bluetooth;", true);
+  BLE::Init(config.station_name, bluetoothController);
+  BLE::updateValue(CONFIGURATION_UUID, jsonConfig);
+
+  logIt("\n1.2 Estabelecendo conexão com wifi ", true);
   setupWifi("  - Wifi", config.wifi_ssid, config.wifi_password);
-  int nivelDbm =( WiFi.RSSI()) * -1;
+  int nivelDbm = (WiFi.RSSI()) * -1;
   storeLog((String(nivelDbm) + ";").c_str());
 
-  // 1.4 Estabelecendo conexão com NTP;
-  delay(2000);
-  Serial.println("\n1.5 NTP;");
-  storeLog("\n- Conectando ao NTP: ... ");
+  logIt("\n1.3 Estabelecendo conexão com NTP;", true);
   connectNtp("  - NTP");
-  storeLog("ok;");
 
-  // 1.5 Configuração incial MQTT broker;
-  delay(2000);
-  Serial.println("\n1.6 MQTT;");
-  storeLog("\n- Conectando ao MQTT: ... ");
+  logIt("\n1.4 Estabelecendo conexão com MQTT;", true);
   setupMqtt("  - MQTT", config.mqtt_server, config.mqtt_port, config.mqtt_username, config.mqtt_password, config.mqtt_topic);
-  storeLog("ok;");
 
-  // 1.6 Iniciando controllers;
-  delay(1000);
-  Serial.println("\n\n1.7 Iniciando controllers;");
+  logIt("\n\n1.5 Iniciando controllers;", true);
   setupSensors();
 
-  // 1.7 Definindo variáives auxiliares globais;
   int now = millis();
   lastVVTImpulseTime = now;
   lastPVLImpulseTime = now;
-  startTime = now;
 
   // 2; Inicio
-  Serial.printf("\n------------------- PRIMEIRA ITERAÇÃO -------------------\n\n");
+  Serial.printf("\n >> PRIMEIRA ITERAÇÃO\n");
 
   int timestamp = timeClient.getEpochTime();
   convertTimeToLocaleDate(timestamp);
+  
   String dataHora = String(formatedDateString) + "T" + timeClient.getFormattedTime();
   storeLog(("\n" + dataHora + "\n").c_str());
 }
 
-void loop()
-{
-  // 2. Inicio Loop;
-  int now = millis();
-  int timeRemaining = startTime + config.interval - now;
-  bool isMqttConnected = false;
-  bool isWifiConnected = false;
+void loop() {
+  startTime = millis();
 
-  // 2.2 Garantindo conexão com mqqt broker;
-  if (isWifiConnected = WiFi.status() == WL_CONNECTED){ 
-    isMqttConnected = mqttClient.loop();
-  }
+  timeClient.update();
+  int timestamp = timeClient.getEpochTime();
 
-  // 2.1 Tempo ocioso para captação de metricas 60s
-  if (timeRemaining > 0){
-    if (timeRemaining % 10000 == 0 ){
-      Serial.printf("\n\n * Coletando dados, proximo resultado em %d segundos...", (timeRemaining / 1000));
-      Serial.printf("\n  - WIFI: %s", isWifiConnected ? "Contectado" : "Desconectado");
-  
-      if(isWifiConnected){
-        int nivelDbm =( WiFi.RSSI()) * -1;
-        Serial.printf("\n  - WIFI: (%d)", nivelDbm);
-      }
+  convertTimeToLocaleDate(timestamp);
 
-      Serial.printf("\n  - MQTT: %s\n", isMqttConnected == true ? "Contectado" : "Desconectado");
-      if (!isMqttConnected){
-        isMqttConnected = connectMqtt("\n  - MQTT", config.mqtt_username, config.mqtt_password, config.mqtt_topic);
-      }
-      
-      while(now >= millis());
+  rainCounter = 0;
+  anemometerCounter = 0;
+  smallestDeltatime = 4294967295;
+
+  do {
+    timeRemaining = startTime + config.interval - millis();
+    if(ceil(timeRemaining % 5000) != 0) continue;
+
+    // Health check
+    healthCheck.timestamp = timestamp;
+    healthCheck.isWifiConnected = WiFi.status() == WL_CONNECTED;
+    healthCheck.wifiDbmLevel = !healthCheck.isWifiConnected ? 0 : (WiFi.RSSI()) * -1;
+    healthCheck.isMqttConnected = mqttClient.loop();
+    healthCheck.timeRemaining = timeRemaining;
+
+    const char * hcCsv = parseHealthCheckData(healthCheck, 1);
+
+    Serial.printf("\n\nColetando dados, metricas em %d segundos ...", (timeRemaining / 1000));
+    Serial.printf("\n  - %s",hcCsv);
+
+    // Garantindo conexão com mqqt broker;
+    if (healthCheck.isWifiConnected && !healthCheck.isMqttConnected) {
+      healthCheck.isMqttConnected = connectMqtt("\n  - MQTT", config.mqtt_username, config.mqtt_password, config.mqtt_topic);
     }
-    return;
-  }
 
-  // 3 Computando dados 
-  Serial.printf("\n\n3. Computando dados ...\n");
+    // Atualizando BLE advertsting value
+    BLE::updateValue(HEALTH_CHECK_UUID, ("HC: " + String(hcCsv)).c_str());
 
-  // 3.1 Captando dados dos controller 
+    // Garantindo Tempo ocioso para captação de metricas 60s
+  } while (timeRemaining > 0);
+
+  // Computando dados
+  Serial.printf("\n\n Computando dados ...\n");
+
+  Data.timestamp = timestamp;
   Data.wind_dir = getWindDir();
-  Data.wind_speed = 3.052 * (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0); // m/s
-  Data.wind_gust = (3052.0f * ANEMOMETER_CIRC) / smallestDeltatime;
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
+  Data.wind_gust = (3052.0f * ANEMOMETER_CIRC) / smallestDeltatime;
+  Data.wind_speed = 3.052 * (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0); // m/s
+  
   DHTRead(Data.humidity, Data.temperature);
   BMPRead(Data.pressure);
 
-  // 3.2 Redefinido variaveis de medição
-  startTime = millis();
-  anemometerCounter = 0;
-  rainCounter = 0;
-  smallestDeltatime = 4294967295;
+  // Apresentação
+  parseData();
+  Serial.printf("\nResultado CSV:\n%s", metricsCsvOutput); 
+  Serial.printf("\nResultado JSON:\n%s\n", metricsjsonOutput);
 
-  // 3.3 Ping NTP 
-  timeClient.update();
-  int timestamp = timeClient.getEpochTime();
-  convertTimeToLocaleDate(timestamp);
-
-  // 4. Apresentando Dados
-  Serial.printf("\n\n4. Nova metrica (%sT%s)", formatedDateString, timeClient.getFormattedTime());
-  presentation(timestamp);
-
-  // 5; Fim
-  Serial.printf("\n------------------- PROXIMA ITERAÇÃO -------------------\n");
-
-}
-
-void presentation(long timestamp) {
-  // Resultado das medições
-  Serial.println("\nResultado:");
-  Serial.printf("Timestamp..........: %d\n", timestamp);
-  Serial.printf("Velocidade do vento: %f\n", Data.wind_speed);
-  Serial.printf("Chuva acumulada....: %f\n", Data.rain_acc);
-  Serial.printf("Umidade............: %f\n", Data.humidity);
-  Serial.printf("Temperatura........: %f°C\n", Data.temperature);
-  Serial.printf("Raja de vento......: %f\n", Data.wind_gust);
-  Serial.printf("Direção do vento...: %s (%d)\n", strVals[Data.wind_dir], Data.wind_dir);
-  Serial.printf("Pressao............: %f hpa\n",Data.pressure);
-
-  // Parsing data 
-  parseData(timestamp);
-  Serial.printf("\nResultado CSV:\n%s", csv_output);
-  Serial.printf("\nResultado JSON:\n%s\n", json_output);
-
-  // local storage
-  Serial.println("\n4.1. Gravando em disco:");
-  storeMeasurement("/metricas", formatedDateString, csv_output);
+  // Armazenamento local
+  Serial.println("\n Gravando em disco:");
+  storeMeasurement("/metricas", formatedDateString, metricsCsvOutput);
 
   // Enviando Dados Remotamente
-  Serial.println("\n4.2 Enviando Resultados remotamente:  ");
-  bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, json_output);
+  Serial.println("\n Enviando Resultados:  ");
+  bool measurementSent = sendMeasurementToMqtt(config.mqtt_topic, metricsjsonOutput);
 
+  // Update metrics advertsting value
+  BLE::updateValue(HEALTH_CHECK_UUID, ("ME: " + String(metricsCsvOutput)).c_str());
+  Serial.printf("\n >> PROXIMA ITERAÇÃO\n");
 }
 
-void parseData(long timestamp)
-{
-  // parse measurements data to json
-  const char *json_template = "{\"timestamp\": %i, \"temperatura\": %s, \"umidade_ar\": %s, \"velocidade_vento\": %.2f, \"rajada_vento\": %.2f, \"dir_vento\": %d, \"volume_chuva\": %.2f, \"pressao\": %s, \"uid\": \"%s\", \"identidade\": \"%s\"}";
-  sprintf(json_output, json_template,
-          timestamp,
-          isnan(Data.temperature) ? "null" : String(Data.temperature),
-          isnan(Data.humidity) ? "null" : String(Data.humidity),
-          Data.wind_speed,
-          Data.wind_gust,
-          Data.wind_dir,
-          Data.rain_acc,
-          Data.pressure == -1 ? "null" : String(Data.pressure),
-          config.station_uid,
-          config.station_name);
-
-  // parse measurement data to csv
-  const char *csv_template = "%i,%s,%s,%.2f,%.2f,%d,%.2f,%s,%s,%s\n";
-  sprintf(csv_header, "%s\ntimestamp,temperatura,umidade_ar,velocidade_vento,rajada_vento,dir_vento,volume_chuva,pressao,uid,identidade", formatedDateString);
-  sprintf(csv_output, csv_template,
-          timestamp,
-          isnan(Data.temperature) ? "null" : String(Data.temperature),
-          isnan(Data.humidity) ? "null" : String(Data.humidity),
-          Data.wind_speed,
-          Data.wind_gust,
-          Data.wind_dir,
-          Data.rain_acc,
-          Data.pressure == -1 ? "null" : String(Data.pressure),
-          config.station_uid,
-          config.station_name);
+// callbacks
+int bluetoothController(const char *uid, const std::string &content) {
+  if (content.length() == 0) return 0;
+  printf("Bluetooth message received: %s\n", uid);
+  if (content == "@@RESTART") {
+    logIt("Reiniciando Arduino a força;", true);
+    delay(2000);
+    ESP.restart();
+    return 1;
+  } else if(content == "@@BLE_SHUTDOWN") {
+    logIt("Desligando o BLE permanentemente", true);
+    delay(2000);
+    BLE::stop();
+    return 1;
+  } else {
+    logIt("Modificando configuração de ambiente via bluetooth", true);
+    delay(2000);
+    createFile(SD, "/config.txt", content.c_str());
+    logIt("Reiniciando Arduino a força;", true);
+    ESP.restart();
+    return 1;
+  }
+  return 0;
 }
 
 void convertTimeToLocaleDate(long timestamp) {
@@ -245,3 +194,4 @@ void convertTimeToLocaleDate(long timestamp) {
   int year = ptm->tm_year + 1900;
   formatedDateString = String(day) + "-" + String(month) + "-" + String(year);
 }
+
