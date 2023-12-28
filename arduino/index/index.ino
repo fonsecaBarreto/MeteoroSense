@@ -13,6 +13,7 @@
 #include "bt-integration.h"
 #include <string>
 #include <vector>
+#include <esp_task_wdt.h>
 
 // Pluviometro
 extern unsigned long lastPVLImpulseTime;
@@ -91,6 +92,12 @@ void setup() {
   
   String dataHora = String(formatedDateString) + "T" + timeClient.getFormattedTime();
   storeLog(("\n" + dataHora + "\n").c_str());
+
+
+
+    esp_task_wdt_init(100, true);
+    // Enable the watchdog timer for the main task
+    esp_task_wdt_add(NULL);
 }
 
 void loop() {
@@ -160,6 +167,7 @@ void loop() {
   // Update metrics advertsting value
   BLE::updateValue(HEALTH_CHECK_UUID, ("ME: " + String(metricsCsvOutput)).c_str());
   Serial.printf("\n >> PROXIMA ITERAÇÃO\n");
+  esp_task_wdt_reset();
 }
 
 // callbacks
