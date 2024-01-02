@@ -1,6 +1,6 @@
 // Autor: Lucas Fonseca e Gabriel Fonseca
 // Titulo: Sit arduino
-// Versão: 1.6.5 (BlueTooth BLE);
+// Versão: 1.6.6 Watch-dog;
 //.........................................................................................................................
 
 #include "constants.h"
@@ -14,6 +14,9 @@
 #include <string>
 #include <vector>
 #include <esp_task_wdt.h>
+
+// -- WATCH-DOG
+#define WDT_TIMEOUT 60   
 
 // Pluviometro
 extern unsigned long lastPVLImpulseTime;
@@ -32,7 +35,7 @@ long startTime;
 int timeRemaining=0;
 std::string jsonConfig;
 String formatedDateString = "";
-struct HealthCheck healthCheck = {"1.6", 0, false, false, 0, 0};
+struct HealthCheck healthCheck = {"1.6.6", 0, false, false, 0, 0};
 
 void logIt(const std::string &message, bool store = false){
   Serial.print(message.c_str());
@@ -93,14 +96,72 @@ void setup() {
   String dataHora = String(formatedDateString) + "T" + timeClient.getFormattedTime();
   storeLog(("\n" + dataHora + "\n").c_str());
 
+  // -- WATCH-DOG
+  esp_task_wdt_init(WDT_TIMEOUT, true);
+  esp_task_wdt_add(NULL);
+  
+  esp_reset_reason_t bootReason = esp_reset_reason();
+
+  logIt("\n**** Reset/Boot ****", true);
+  logIt(String(bootReason).c_str(), true);
+
+  switch (bootReason) {
+    case ESP_RST_UNKNOWN:
+      logIt("\nReset reason can not be determined", true);
+    break;
+
+    case ESP_RST_POWERON:
+      logIt("\nReset due to power-on event", true);
+    break;
+
+    case ESP_RST_EXT:
+      logIt("\nReset by external pin (not applicable for ESP32)", true);
+    break;
+
+    case ESP_RST_SW:
+      logIt("\nSoftware reset via esp_restart", true);
+    break;
+
+    case ESP_RST_PANIC:
+      logIt("\nSoftware reset due to exception/panic", true);
+    break;
+
+    case ESP_RST_INT_WDT:
+      logIt("\nReset (software or hardware) due to interrupt watchdog", true);
+    break;
+
+    case ESP_RST_TASK_WDT:
+      logIt("\nReset due to task watchdog", true);
+    break;
+
+    case ESP_RST_WDT:
+      logIt("\nReset due to other watchdogs", true);
+    break;                                
+
+    case ESP_RST_DEEPSLEEP:
+      logIt("\nReset after exiting deep sleep mode", true);
+    break;
+
+    case ESP_RST_BROWNOUT:
+      logIt("\nBrownout reset (software or hardware)", true);
+    break;
+    
+    case ESP_RST_SDIO:
+      logIt("\nReset over SDIO", true);
+    break;
+    
+    default:
+    break;
+  } 
 
 
-    esp_task_wdt_init(100, true);
-    // Enable the watchdog timer for the main task
-    esp_task_wdt_add(NULL);
 }
 
 void loop() {
+  // -- WATCH-DOG
+  esp_task_wdt_reset();
+  // -- WATCH-DOG
+
   startTime = millis();
 
   timeClient.update();
@@ -167,7 +228,6 @@ void loop() {
   // Update metrics advertsting value
   BLE::updateValue(HEALTH_CHECK_UUID, ("ME: " + String(metricsCsvOutput)).c_str());
   Serial.printf("\n >> PROXIMA ITERAÇÃO\n");
-  esp_task_wdt_reset();
 }
 
 // callbacks
