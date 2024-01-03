@@ -16,7 +16,7 @@
 #include <esp_task_wdt.h>
 
 // -- WATCH-DOG
-#define WDT_TIMEOUT 60   
+#define WDT_TIMEOUT 100   
 
 // Pluviometro
 extern unsigned long lastPVLImpulseTime;
@@ -102,7 +102,7 @@ void setup() {
   
   esp_reset_reason_t bootReason = esp_reset_reason();
 
-  logIt("\n**** Reset/Boot ****", true);
+  logIt("\n**** Reset/Boot **** : ", true);
   logIt(String(bootReason).c_str(), true);
 
   switch (bootReason) {
@@ -153,8 +153,6 @@ void setup() {
     default:
     break;
   } 
-
-
 }
 
 void loop() {
