@@ -118,12 +118,13 @@ void setup() {
 
   // -- WATCH-DOG
   watchdogRTC();
-  //Yellow Blink
-  for(int i=0;i<7;i++){
-  digitalWrite(LED1,i%2);
-  delay(400);}
 
-  
+  //Yellow Blink
+  for(int i=0; i<7; i++) {
+    digitalWrite(LED1,i%2);
+    delay(400);
+  }
+
   startTime = millis();
 }
 
@@ -133,8 +134,6 @@ void loop() {
   // -- WATCH-DOG
   rtc_wdt_feed();
   // -- WATCH-DOG
-
-  
 
   timeClient.update();
   int timestamp = timeClient.getEpochTime();
@@ -234,4 +233,3 @@ void convertTimeToLocaleDate(long timestamp) {
   int year = ptm->tm_year + 1900;
   formatedDateString = String(day) + "-" + String(month) + "-" + String(year);
 }
-
