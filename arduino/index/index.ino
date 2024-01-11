@@ -16,7 +16,7 @@
 #include <rtc_wdt.h>
 
 // -- WATCH-DOG
-#define WDT_TIMEOUT 100   
+#define WDT_TIMEOUT 100000   
 
 // Pluviometro
 extern unsigned long lastPVLImpulseTime;
@@ -49,23 +49,22 @@ void watchdogRTC()
     rtc_wdt_protect_off();      //Disable RTC WDT write protection
     rtc_wdt_disable();
     rtc_wdt_set_stage(RTC_WDT_STAGE0, RTC_WDT_STAGE_ACTION_RESET_RTC);
-    rtc_wdt_set_time(RTC_WDT_STAGE0, 100000); // timeout rtd_wdt 10000ms.
+    rtc_wdt_set_time(RTC_WDT_STAGE0, WDT_TIMEOUT); // timeout rtd_wdt 10000ms.
     
     rtc_wdt_enable();           //Start the RTC WDT timer
     rtc_wdt_protect_on();       //Enable RTC WDT write protection
 }
-shutdown_handler_t OnWTDTReset()
-{
-  char buffer[100]{0};  // Adjust the size according to your needs
-  int len = snprintf(buffer, sizeof(buffer),  "Free Heap space: %u\tLargest free Heap block: %u",
-                   ESP.getFreeHeap(), heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-  logIt(buffer,true);
 
-}
 void setup() {
   delay(3000);
-  Serial.begin(115200);
   logIt("\n >> Sistema Integrado de meteorologia << \n");
+  pinMode(LED1,OUTPUT);
+  pinMode(LED2,OUTPUT);
+  pinMode(LED3,OUTPUT);
+  digitalWrite(LED1,HIGH);
+  digitalWrite(LED2,LOW);
+  digitalWrite(LED3,LOW);
+  Serial.begin(115200);
 
   pinMode(PLV_PIN, INPUT_PULLDOWN);
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
@@ -74,7 +73,10 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
 
   logIt("\nIniciando cartão SD");
+  
+
   initSdCard();
+  
 
   logIt("\nCriando diretorios padrões");
   createDirectory("/metricas");
@@ -116,14 +118,23 @@ void setup() {
 
   // -- WATCH-DOG
   watchdogRTC();
+  //Yellow Blink
+  for(int i=0;i<7;i++){
+  digitalWrite(LED1,i%2);
+  delay(400);}
+
+  
+  startTime = millis();
 }
 
 void loop() {
+  digitalWrite(LED3,HIGH);
+
   // -- WATCH-DOG
   rtc_wdt_feed();
   // -- WATCH-DOG
 
-  startTime = millis();
+  
 
   timeClient.update();
   int timestamp = timeClient.getEpochTime();
@@ -160,7 +171,7 @@ void loop() {
 
     // Garantindo Tempo ocioso para captação de metricas 60s
   } while (timeRemaining > 0);
-
+  startTime = millis();
   // Computando dados
   Serial.printf("\n\n Computando dados ...\n");
 
