@@ -49,7 +49,7 @@ void watchdogRTC()
     rtc_wdt_protect_off();      //Disable RTC WDT write protection
     rtc_wdt_disable();
     rtc_wdt_set_stage(RTC_WDT_STAGE0, RTC_WDT_STAGE_ACTION_RESET_RTC);
-    rtc_wdt_set_time(RTC_WDT_STAGE0, 10000); // timeout rtd_wdt 10000ms.
+    rtc_wdt_set_time(RTC_WDT_STAGE0, 100000); // timeout rtd_wdt 10000ms.
     
     rtc_wdt_enable();           //Start the RTC WDT timer
     rtc_wdt_protect_on();       //Enable RTC WDT write protection
