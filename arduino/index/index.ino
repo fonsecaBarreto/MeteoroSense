@@ -13,7 +13,7 @@
 #include "bt-integration.h"
 #include <string>
 #include <vector>
-#include <esp_task_wdt.h>
+#include <rtc_wdt.h>
 
 // -- WATCH-DOG
 #define WDT_TIMEOUT 100   
@@ -44,6 +44,24 @@ void logIt(const std::string &message, bool store = false){
   }
 }
 
+void watchdogRTC()
+{
+    rtc_wdt_protect_off();      //Disable RTC WDT write protection
+    rtc_wdt_disable();
+    rtc_wdt_set_stage(RTC_WDT_STAGE0, RTC_WDT_STAGE_ACTION_RESET_RTC);
+    rtc_wdt_set_time(RTC_WDT_STAGE0, 10000); // timeout rtd_wdt 10000ms.
+    
+    rtc_wdt_enable();           //Start the RTC WDT timer
+    rtc_wdt_protect_on();       //Enable RTC WDT write protection
+}
+shutdown_handler_t OnWTDTReset()
+{
+  char buffer[100]{0};  // Adjust the size according to your needs
+  int len = snprintf(buffer, sizeof(buffer),  "Free Heap space: %u\tLargest free Heap block: %u",
+                   ESP.getFreeHeap(), heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+  logIt(buffer,true);
+
+}
 void setup() {
   delay(3000);
   Serial.begin(115200);
@@ -97,67 +115,12 @@ void setup() {
   storeLog(("\n" + dataHora + "\n").c_str());
 
   // -- WATCH-DOG
-  esp_task_wdt_init(WDT_TIMEOUT, true);
-  esp_task_wdt_add(NULL);
-  
-  esp_reset_reason_t bootReason = esp_reset_reason();
-
-  logIt("\n**** Reset/Boot **** : ", true);
-  logIt(String(bootReason).c_str(), true);
-
-  switch (bootReason) {
-    case ESP_RST_UNKNOWN:
-      logIt("\nReset reason can not be determined", true);
-    break;
-
-    case ESP_RST_POWERON:
-      logIt("\nReset due to power-on event", true);
-    break;
-
-    case ESP_RST_EXT:
-      logIt("\nReset by external pin (not applicable for ESP32)", true);
-    break;
-
-    case ESP_RST_SW:
-      logIt("\nSoftware reset via esp_restart", true);
-    break;
-
-    case ESP_RST_PANIC:
-      logIt("\nSoftware reset due to exception/panic", true);
-    break;
-
-    case ESP_RST_INT_WDT:
-      logIt("\nReset (software or hardware) due to interrupt watchdog", true);
-    break;
-
-    case ESP_RST_TASK_WDT:
-      logIt("\nReset due to task watchdog", true);
-    break;
-
-    case ESP_RST_WDT:
-      logIt("\nReset due to other watchdogs", true);
-    break;                                
-
-    case ESP_RST_DEEPSLEEP:
-      logIt("\nReset after exiting deep sleep mode", true);
-    break;
-
-    case ESP_RST_BROWNOUT:
-      logIt("\nBrownout reset (software or hardware)", true);
-    break;
-    
-    case ESP_RST_SDIO:
-      logIt("\nReset over SDIO", true);
-    break;
-    
-    default:
-    break;
-  } 
+  watchdogRTC();
 }
 
 void loop() {
   // -- WATCH-DOG
-  esp_task_wdt_reset();
+  rtc_wdt_feed();
   // -- WATCH-DOG
 
   startTime = millis();
