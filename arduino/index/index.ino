@@ -57,7 +57,6 @@ void watchdogRTC()
 
 void setup() {
   delay(3000);
-  Serial.begin(115200);
   logIt("\n >> Sistema Integrado de meteorologia << \n");
   pinMode(LED1,OUTPUT);
   pinMode(LED2,OUTPUT);
