@@ -2,7 +2,7 @@
 
 // constants
 #define INTERVAL 60000       // Intervalo de Tempo entre medições [ms]
-#define DEBOUNCE_DELAY 25   // [ms]
+#define DEBOUNCE_DELAY 30   // [ms]
 
 // pinos
 #define DHTPIN 17
