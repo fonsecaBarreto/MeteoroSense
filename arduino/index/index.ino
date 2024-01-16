@@ -1,6 +1,6 @@
 // Autor: Lucas Fonseca e Gabriel Fonseca
 // Titulo: Sit arduino
-// Versão: 1.6.6 Watch-dog;
+// Versão: 1.7.0 Wind-gust is now 3 second average;
 //.........................................................................................................................
 
 #include "constants.h"
@@ -26,7 +26,7 @@ extern unsigned int rainCounter;
 extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
-
+extern int rps[20];
 // Sensors
 extern Sensors sensors;
 
@@ -35,7 +35,7 @@ long startTime;
 int timeRemaining=0;
 std::string jsonConfig;
 String formatedDateString = "";
-struct HealthCheck healthCheck = {"1.6.6", 0, false, false, 0, 0};
+struct HealthCheck healthCheck = {"1.7.0", 0, false, false, 0, 0};
 
 void logIt(const std::string &message, bool store = false){
   Serial.print(message.c_str());
@@ -142,10 +142,15 @@ void loop() {
 
   rainCounter = 0;
   anemometerCounter = 0;
-  smallestDeltatime = 4294967295;
 
+  smallestDeltatime = 4294967295;
+  memset(rps,0,sizeof(rps));
+  windGustReset();
   do {
-    timeRemaining = startTime + config.interval - millis();
+    unsigned long now = millis();
+    timeRemaining = startTime + config.interval - now;
+    //calculate
+    WindGustRead(now);
     if(ceil(timeRemaining % 5000) != 0) continue;
 
     // Health check
@@ -172,12 +177,13 @@ void loop() {
   } while (timeRemaining > 0);
   startTime = millis();
   // Computando dados
+  
   Serial.printf("\n\n Computando dados ...\n");
 
   Data.timestamp = timestamp;
   Data.wind_dir = getWindDir();
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
-  Data.wind_gust = (3052.0f * ANEMOMETER_CIRC) / smallestDeltatime;
+  Data.wind_gust  = 3.052f /3.0f* ANEMOMETER_CIRC *findMax(rps,sizeof(rps)/sizeof(int));
   Data.wind_speed = 3.052 * (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0); // m/s
   
   DHTRead(Data.humidity, Data.temperature);
