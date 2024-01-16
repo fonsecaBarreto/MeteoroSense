@@ -1,6 +1,6 @@
 // Autor: Lucas Fonseca e Gabriel Fonseca
 // Titulo: Sit arduino
-// Versão: 1.6.6 Watch-dog;
+// Versão: 1.7.0 Wind-gust is now 3 second average;
 //.........................................................................................................................
 
 #include "constants.h"
@@ -39,7 +39,7 @@ long startTime;
 int timeRemaining=0;
 std::string jsonConfig;
 String formatedDateString = "";
-struct HealthCheck healthCheck = {"1.6.6", 0, false, false, 0, 0};
+struct HealthCheck healthCheck = {"1.7.0", 0, false, false, 0, 0};
 
 void logIt(const std::string &message, bool store = false){
   Serial.print(message.c_str());
