@@ -69,7 +69,7 @@ char csvHeader[200]{0};
 
 void parseData() {
   // parse measurements data to json
-  const char *json_template = "{\"timestamp\": %i, \"temperatura\": %s, \"umidade_ar\": %s, \"velocidade_vento\": %.2f, \"rajada_vento\": %.2f, \"dir_vento\": %d, \"volume_chuva\": %.2f, \"pressao\": %s, \"uid\": \"%s\", \"identidade\": \"%s\",}";
+  const char *json_template = "{\"timestamp\": %i, \"temperatura\": %s, \"umidade_ar\": %s, \"velocidade_vento\": %.2f, \"rajada_vento\": %.2f, \"dir_vento\": %d, \"volume_chuva\": %.2f, \"pressao\": %s, \"uid\": \"%s\", \"identidade\": \"%s\"}";
   sprintf(metricsjsonOutput, json_template,
           Data.timestamp,
           isnan(Data.temperature) ? "null" : String(Data.temperature),
@@ -83,7 +83,7 @@ void parseData() {
           config.station_name);
 
   // parse measurement data to csv
-  const char *csv_template = "%i,%s,%s,%.2f,%.2f,%d,%.2f,%s,%s,%s,%s\n";
+  const char *csv_template = "%i,%s,%s,%.2f,%.2f,%d,%.2f,%s,%s,%s\n";
   sprintf(metricsCsvOutput, csv_template,
           Data.timestamp,
           isnan(Data.temperature) ? "null" : String(Data.temperature),
@@ -94,6 +94,5 @@ void parseData() {
           Data.rain_acc,
           Data.pressure == -1 ? "null" : String(Data.pressure),
           config.station_uid,
-          config.station_name,
-          "1.7.0");
+          config.station_name);
 }
