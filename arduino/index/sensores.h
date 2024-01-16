@@ -8,6 +8,8 @@ void DHTRead(float& hum, float& temp);
 void BMPRead(float& press);
 void beginBMP();
 
+int findMax(int arr[], int size);
+
 
 
 union  Sensors{

@@ -26,7 +26,11 @@ extern unsigned int rainCounter;
 extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
-
+int rps[20]{0};
+int t_counter = 3000;
+unsigned int previousCounter= 0;
+unsigned int lastAssignement = 0;
+unsigned int gustIndex=0;
 // Sensors
 extern Sensors sensors;
 
@@ -142,10 +146,24 @@ void loop() {
 
   rainCounter = 0;
   anemometerCounter = 0;
+  previousCounter = 0;
   smallestDeltatime = 4294967295;
-
+  memset(rps,0,sizeof(rps));
+  gustIndex=0;
+  for(int i =0;i<20;i++)rps[i]=0.0f;
   do {
-    timeRemaining = startTime + config.interval - millis();
+    unsigned long now = millis();
+    timeRemaining = startTime + config.interval - now;
+    //calculate
+    int gustInterval = now-lastAssignement;
+    if(gustInterval>=3000)
+    {
+      lastAssignement= now;
+      int revolutions = anemometerCounter- previousCounter;
+      previousCounter=anemometerCounter;
+      rps[gustIndex++] = revolutions;
+      gustIndex = gustIndex%20;
+    }
     if(ceil(timeRemaining % 5000) != 0) continue;
 
     // Health check
@@ -172,12 +190,13 @@ void loop() {
   } while (timeRemaining > 0);
   startTime = millis();
   // Computando dados
+  
   Serial.printf("\n\n Computando dados ...\n");
 
   Data.timestamp = timestamp;
   Data.wind_dir = getWindDir();
   Data.rain_acc = rainCounter * VOLUME_PLUVIOMETRO;
-  Data.wind_gust = (3052.0f * ANEMOMETER_CIRC) / smallestDeltatime;
+  Data.wind_gust  = 3.052f /3.0f* ANEMOMETER_CIRC *findMax(rps,sizeof(rps)/sizeof(int));
   Data.wind_speed = 3.052 * (ANEMOMETER_CIRC * anemometerCounter) / (INTERVAL / 1000.0); // m/s
   
   DHTRead(Data.humidity, Data.temperature);
