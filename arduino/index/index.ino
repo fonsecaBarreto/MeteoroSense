@@ -150,7 +150,6 @@ void loop() {
   smallestDeltatime = 4294967295;
   memset(rps,0,sizeof(rps));
   gustIndex=0;
-  for(int i =0;i<20;i++)rps[i]=0.0f;
   do {
     unsigned long now = millis();
     timeRemaining = startTime + config.interval - now;
