@@ -16,13 +16,21 @@ const int misoPin = 27;
 const int clockPin = 25;
 const int RETRY_INTERVAL = 5000;
 
+void SD_BLINK(int interval)
+{
+  for(int i=0; i<interval/500;i++){
+    digitalWrite(LED2,i%2);
+    delay(500+((i%2==0) && (i%3>0))*1000);
+}
+}
+
 // Inicia leitura cartão SD
 void initSdCard(){
   SPI.begin(clockPin, misoPin, mosiPin);
   while(!SD.begin(chipSelectPin, SPI)) {
     Serial.printf("\n  - Cartão não encontrado. tentando novamente em %d segundos ...", 2);
-    delay(2000);
-  }
+    SD_BLINK(2000);}
+
   Serial.printf("\n  - Leitor de Cartão iniciado com sucesso!.\n");
 }
 
@@ -84,7 +92,8 @@ void loadConfiguration(fs::FS &fs, const char *filename, Config &config, std::st
 
     Serial.printf("\n - Proxima tentativa de re-leitura em %d segundos ... \n\n\n", (RETRY_INTERVAL / 1000));
     attemptCount++;
-    delay(RETRY_INTERVAL);
+    SD_BLINK(RETRY_INTERVAL);
+
   }
 
   Serial.printf("\n - Variáveis de ambiente carregadas com sucesso!");

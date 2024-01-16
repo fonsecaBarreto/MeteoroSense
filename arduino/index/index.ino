@@ -13,10 +13,10 @@
 #include "bt-integration.h"
 #include <string>
 #include <vector>
-#include <esp_task_wdt.h>
+#include <rtc_wdt.h>
 
 // -- WATCH-DOG
-#define WDT_TIMEOUT 100   
+#define WDT_TIMEOUT 100000   
 
 // Pluviometro
 extern unsigned long lastPVLImpulseTime;
@@ -44,10 +44,27 @@ void logIt(const std::string &message, bool store = false){
   }
 }
 
+void watchdogRTC()
+{
+    rtc_wdt_protect_off();      //Disable RTC WDT write protection
+    rtc_wdt_disable();
+    rtc_wdt_set_stage(RTC_WDT_STAGE0, RTC_WDT_STAGE_ACTION_RESET_RTC);
+    rtc_wdt_set_time(RTC_WDT_STAGE0, WDT_TIMEOUT); // timeout rtd_wdt 10000ms.
+    
+    rtc_wdt_enable();           //Start the RTC WDT timer
+    rtc_wdt_protect_on();       //Enable RTC WDT write protection
+}
+
 void setup() {
   delay(3000);
-  Serial.begin(115200);
   logIt("\n >> Sistema Integrado de meteorologia << \n");
+  pinMode(LED1,OUTPUT);
+  pinMode(LED2,OUTPUT);
+  pinMode(LED3,OUTPUT);
+  digitalWrite(LED1,HIGH);
+  digitalWrite(LED2,LOW);
+  digitalWrite(LED3,LOW);
+  Serial.begin(115200);
 
   pinMode(PLV_PIN, INPUT_PULLDOWN);
   pinMode(ANEMOMETER_PIN, INPUT_PULLUP);
@@ -56,7 +73,10 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(ANEMOMETER_PIN), anemometerChange, FALLING);
 
   logIt("\nIniciando cartão SD");
+  
+
   initSdCard();
+  
 
   logIt("\nCriando diretorios padrões");
   createDirectory("/metricas");
@@ -97,70 +117,23 @@ void setup() {
   storeLog(("\n" + dataHora + "\n").c_str());
 
   // -- WATCH-DOG
-  esp_task_wdt_init(WDT_TIMEOUT, true);
-  esp_task_wdt_add(NULL);
-  
-  esp_reset_reason_t bootReason = esp_reset_reason();
+  watchdogRTC();
 
-  logIt("\n**** Reset/Boot **** : ", true);
-  logIt(String(bootReason).c_str(), true);
+  //Yellow Blink
+  for(int i=0; i<7; i++) {
+    digitalWrite(LED1,i%2);
+    delay(400);
+  }
 
-  switch (bootReason) {
-    case ESP_RST_UNKNOWN:
-      logIt("\nReset reason can not be determined", true);
-    break;
-
-    case ESP_RST_POWERON:
-      logIt("\nReset due to power-on event", true);
-    break;
-
-    case ESP_RST_EXT:
-      logIt("\nReset by external pin (not applicable for ESP32)", true);
-    break;
-
-    case ESP_RST_SW:
-      logIt("\nSoftware reset via esp_restart", true);
-    break;
-
-    case ESP_RST_PANIC:
-      logIt("\nSoftware reset due to exception/panic", true);
-    break;
-
-    case ESP_RST_INT_WDT:
-      logIt("\nReset (software or hardware) due to interrupt watchdog", true);
-    break;
-
-    case ESP_RST_TASK_WDT:
-      logIt("\nReset due to task watchdog", true);
-    break;
-
-    case ESP_RST_WDT:
-      logIt("\nReset due to other watchdogs", true);
-    break;                                
-
-    case ESP_RST_DEEPSLEEP:
-      logIt("\nReset after exiting deep sleep mode", true);
-    break;
-
-    case ESP_RST_BROWNOUT:
-      logIt("\nBrownout reset (software or hardware)", true);
-    break;
-    
-    case ESP_RST_SDIO:
-      logIt("\nReset over SDIO", true);
-    break;
-    
-    default:
-    break;
-  } 
+  startTime = millis();
 }
 
 void loop() {
-  // -- WATCH-DOG
-  esp_task_wdt_reset();
-  // -- WATCH-DOG
+  digitalWrite(LED3,HIGH);
 
-  startTime = millis();
+  // -- WATCH-DOG
+  rtc_wdt_feed();
+  // -- WATCH-DOG
 
   timeClient.update();
   int timestamp = timeClient.getEpochTime();
@@ -197,7 +170,7 @@ void loop() {
 
     // Garantindo Tempo ocioso para captação de metricas 60s
   } while (timeRemaining > 0);
-
+  startTime = millis();
   // Computando dados
   Serial.printf("\n\n Computando dados ...\n");
 
@@ -260,4 +233,3 @@ void convertTimeToLocaleDate(long timestamp) {
   int year = ptm->tm_year + 1900;
   formatedDateString = String(day) + "-" + String(month) + "-" + String(year);
 }
-
