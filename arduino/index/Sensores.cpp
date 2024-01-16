@@ -19,7 +19,8 @@ unsigned int rainCounter = 0;
 float anemometerCounter = 0.0f;
 unsigned long lastVVTImpulseTime = 0;
 unsigned long smallestDeltatime=4294967295;
-
+unsigned int gustIndex = 0;  
+unsigned int previousCounter= 0;
 Sensors sensors;
 
 void setupSensors(){
@@ -101,6 +102,24 @@ void BMPRead(float& press)
     beginBMP();
   }
 }
+
+int rps[20]{0};
+
+void WindGustRead(unsigned int now)
+{
+  static unsigned int lastAssignement = 0;
+
+  int gustInterval = now-lastAssignement;
+    if(gustInterval>=3000)
+    {
+      lastAssignement= now;
+      int revolutions = anemometerCounter- previousCounter;
+      previousCounter=anemometerCounter;
+      rps[gustIndex++] = revolutions;
+      gustIndex = gustIndex%20;
+    }
+}
+void windGustReset(){gustIndex=0;  previousCounter = 0;}
 
 int findMax(int arr[], int size) {
     if (size <= 0) {

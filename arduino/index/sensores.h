@@ -9,6 +9,8 @@ void BMPRead(float& press);
 void beginBMP();
 
 int findMax(int arr[], int size);
+void WindGustRead(unsigned int now);
+void windGustReset();
 
 
 

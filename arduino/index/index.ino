@@ -26,11 +26,7 @@ extern unsigned int rainCounter;
 extern unsigned long lastVVTImpulseTime;
 extern float anemometerCounter;
 extern unsigned long smallestDeltatime;
-int rps[20]{0};
-int t_counter = 3000;
-unsigned int previousCounter= 0;
-unsigned int lastAssignement = 0;
-unsigned int gustIndex=0;
+extern int rps[20];
 // Sensors
 extern Sensors sensors;
 
@@ -146,23 +142,15 @@ void loop() {
 
   rainCounter = 0;
   anemometerCounter = 0;
-  previousCounter = 0;
+
   smallestDeltatime = 4294967295;
   memset(rps,0,sizeof(rps));
-  gustIndex=0;
+  windGustReset();
   do {
     unsigned long now = millis();
     timeRemaining = startTime + config.interval - now;
     //calculate
-    int gustInterval = now-lastAssignement;
-    if(gustInterval>=3000)
-    {
-      lastAssignement= now;
-      int revolutions = anemometerCounter- previousCounter;
-      previousCounter=anemometerCounter;
-      rps[gustIndex++] = revolutions;
-      gustIndex = gustIndex%20;
-    }
+    WindGustRead(now);
     if(ceil(timeRemaining % 5000) != 0) continue;
 
     // Health check
