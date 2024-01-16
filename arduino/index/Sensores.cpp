@@ -102,26 +102,16 @@ void BMPRead(float& press)
   }
 }
 
-
 int findMax(int arr[], int size) {
-    // Check if the array is empty
     if (size <= 0) {
         printf("Array is empty.\n");
-        return -1; // Return an appropriate value or handle the case as needed
+        return 0; 
     }
-
-    // Initialize max to the first element of the array
     int max = arr[0];
-    
-
-    // Iterate through the array to find the maximum element
-    Serial.print("Testing: ");
-    for (int i = 0; i < size; i++) {
-      Serial.print(arr[i]);Serial.print(" ");
+    for (int i = 1; i < size; i++) {
         if (arr[i] > max) {
             max = arr[i];
         }
     }
-    Serial.print("\n");
     return max;
 }
